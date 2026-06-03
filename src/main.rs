@@ -1,34 +1,33 @@
-use axum::{Router, routing::get};
-use book::config::Config;
+use axum::Router;
+use axum::routing::{get, post};
+use book::CONFIG;
 use book::model::AppState;
 use redb::Database;
 use std::sync::Arc;
-use tera::Tera;
 use tokio::net::TcpListener;
 use tower_http::{compression::CompressionLayer, services::ServeDir};
-mod pages;
+mod routes;
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt().init();
 
-    let config = Config::init("server.toml").expect("failed to load config");
     let db = Database::open("data.redb").expect("failed to open database");
-    let templates = Tera::new("templates/**/*").expect("failed to load templates");
-    let listener = TcpListener::bind(&config.server_addr).await.unwrap();
+    let listener = TcpListener::bind(&CONFIG.server_addr).await.unwrap();
 
-    // home page
-    let app = Router::new().route("/", get(pages::home));
+    let app = Router::new()
+        .route("/", get(routes::home_page))
+        .route("/page/{page}", get(routes::view_page))
+        .route("/sign-in", get(routes::sign_in_page))
+        .route("/sign-in", post(routes::sign_in_post))
+        .route("/sign-up", get(routes::sign_up_page))
+        .route("/sign-up", post(routes::sign_up_post));
 
     let app = app
-        .fallback_service(ServeDir::new(&config.site_root))
+        .fallback_service(ServeDir::new(&CONFIG.site_root))
         .layer(CompressionLayer::new().zstd(true).gzip(true).deflate(true));
 
-    println!("🚀 Server started at: {}", &config.base_url);
-    let app = app.with_state(Arc::new(AppState {
-        config,
-        db,
-        templates,
-    }));
+    tracing::info!("🚀 Server started at: {}", &CONFIG.base_url);
+    let app = app.with_state(Arc::new(AppState { db }));
     axum::serve(listener, app).await.unwrap();
 }

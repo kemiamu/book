@@ -1,68 +1,133 @@
 use crate::model::Mac;
 use redb::TableDefinition;
-use rkyv::{Archive, Deserialize, Serialize, rancor};
+use rkyv::{Archive, rancor};
 
 pub const USERS: TableDefinition<&str, User> = TableDefinition::new("users");
 
-#[derive(Archive, Serialize, Deserialize, Debug, Clone)]
+#[derive(Archive, rkyv::Serialize, rkyv::Deserialize, Debug, Clone)]
 pub struct User {
     password: Mac,
     pub parent: String,
 }
 
 impl User {
+    const PASSWD_TAG: &str = "password";
+
     pub fn new(password: impl AsRef<[u8]>, key: impl AsRef<[u8]>, parent: String) -> Self {
-        const TAG: &str = "password";
-        let password = Mac::new(password, key, TAG);
+        let password = Mac::new(password, key, Self::PASSWD_TAG);
         Self { password, parent }
+    }
+
+    pub fn verify(&self, password: impl AsRef<[u8]>, key: impl AsRef<[u8]>) -> bool {
+        let expected = Mac::new(password, key, Self::PASSWD_TAG);
+        self.password == expected
     }
 }
 
-// invitation
+// signature
 
-#[derive(Archive, Serialize, Deserialize, Debug, Clone)]
+pub struct Signed<T: Signable> {
+    pub inner: T,
+}
+
+impl<T: Signable> Signed<T> {
+    pub fn new(inner: T) -> Self {
+        Self { inner }
+    }
+
+    pub fn parse(s: &str, key: impl AsRef<[u8]>) -> Option<Self> {
+        let (hex, sig) = s.rsplit_once('.')?;
+        let data = hex::decode(hex).ok()?;
+        let inner = T::deserialize(&data)?;
+        let expected = Mac::new(&data, key, T::tag()).to_string();
+        (sig == expected && inner.is_valid()).then_some(Self { inner })
+    }
+
+    pub fn generate(&self, key: impl AsRef<[u8]>) -> String {
+        let data = self.inner.serialize();
+        let sig = Mac::new(&data, key, T::tag());
+        format!("{}.{}", hex::encode(&data), sig)
+    }
+}
+
+pub trait Signable: Sized {
+    fn tag() -> &'static str;
+    fn serialize(&self) -> Vec<u8>;
+    fn deserialize(bytes: &[u8]) -> Option<Self>;
+    fn is_valid(&self) -> bool;
+}
+
+// invite
+
+#[derive(Archive, rkyv::Serialize, rkyv::Deserialize, Debug, Clone)]
 pub struct Invitation {
     pub inviter: String,
     pub expires_at: i64,
 }
 
 impl Invitation {
+    pub const EXPIRY_SECS: i64 = 7 * 24 * 60 * 60;
+
     pub fn new(inviter: String) -> Self {
-        const EXPIRY_SECS: i64 = 7 * 24 * 60 * 60;
         let now = time::UtcDateTime::now().unix_timestamp();
         Self {
             inviter,
-            expires_at: now + EXPIRY_SECS,
+            expires_at: now + Self::EXPIRY_SECS,
         }
-    }
-
-    fn sign(data: &[u8], key: impl AsRef<[u8]>) -> Mac {
-        const TAG: &str = "invitation";
-        Mac::new(data, key, TAG)
-    }
-
-    /// Parse from hex(rkyv_bytes).hex(signature)
-    pub fn parse(s: &str, key: impl AsRef<[u8]>) -> Option<Self> {
-        let (hex, sig) = s.rsplit_once('.')?;
-        let data = hex::decode(hex).ok()?;
-        let archived = rkyv::access::<ArchivedInvitation, rancor::Error>(&data).ok()?;
-        match Self::sign(&data, key).to_string() == sig
-            && archived.expires_at >= time::UtcDateTime::now().unix_timestamp()
-        {
-            true => rkyv::deserialize::<Invitation, rancor::Error>(archived).ok(),
-            false => None,
-        }
-    }
-
-    /// hex(rkyv_bytes).hex(signature)
-    pub fn generate(&self, key: impl AsRef<[u8]>) -> String {
-        let data = rkyv::to_bytes::<rancor::Error>(self).unwrap();
-        let sign = Invitation::sign(&data, key);
-        format!("{}.{}", hex::encode(&data), sign)
     }
 }
 
-// storage
+impl Signable for Invitation {
+    fn tag() -> &'static str {
+        "invitation"
+    }
+    fn is_valid(&self) -> bool {
+        self.expires_at >= time::UtcDateTime::now().unix_timestamp()
+    }
+    fn serialize(&self) -> Vec<u8> {
+        rkyv::to_bytes::<rancor::Error>(self).unwrap().into_vec()
+    }
+    fn deserialize(bytes: &[u8]) -> Option<Self> {
+        rkyv::from_bytes::<Invitation, rancor::Error>(bytes).ok()
+    }
+}
+
+// session
+
+#[derive(Archive, rkyv::Serialize, rkyv::Deserialize, Debug, Clone)]
+pub struct Session {
+    pub user: String,
+    pub expires_at: i64,
+}
+
+impl Session {
+    pub const EXPIRY_SECS: i64 = 90 * 24 * 60 * 60;
+
+    pub fn new(user: String) -> Self {
+        let now = time::UtcDateTime::now().unix_timestamp();
+        Self {
+            user,
+            expires_at: now + Self::EXPIRY_SECS,
+        }
+    }
+}
+
+impl Signable for Session {
+    fn tag() -> &'static str {
+        "session"
+    }
+    fn is_valid(&self) -> bool {
+        self.expires_at >= time::UtcDateTime::now().unix_timestamp()
+    }
+    fn serialize(&self) -> Vec<u8> {
+        rkyv::to_bytes::<rancor::Error>(self).unwrap().into_vec()
+    }
+    fn deserialize(bytes: &[u8]) -> Option<Self> {
+        rkyv::from_bytes::<Session, rancor::Error>(bytes).ok()
+    }
+}
+
+// store
 
 impl redb::Value for User {
     type SelfType<'a>

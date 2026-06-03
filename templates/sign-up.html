@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+<!---->
+{% block head %}
+<script>
+  function app() {
+    return {
+      invite: '{{ invite | default(value="") }}',
+      username: "",
+      password: "",
+      confirm: "",
+      error: "",
+      async submit() {
+        this.error = "";
+        if (this.password !== this.confirm) {
+          this.error = "Passwords do not match";
+          return;
+        }
+        const res = await fetch("/sign-up", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: this.username,
+            password: this.password,
+            invite: this.invite,
+          }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          window.location.href = "/";
+        } else {
+          this.error = data.error;
+        }
+      },
+    };
+  }
+</script>
+{% endblock head %}
+<!---->
+{% block body %}
+<section class="section">
+  <div class="container is-max-desktop">
+    <h1 class="title is-3">Sign Up</h1>
+    <form x-data="app()" x-on:submit.prevent="submit">
+      <div class="field">
+        <label class="label" for="invite">Invite Code</label>
+        <div class="control">
+          <input
+            class="input"
+            type="text"
+            id="invite"
+            x-model="invite"
+            required
+          />
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label" for="username">Username</label>
+        <div class="control">
+          <input
+            class="input"
+            type="text"
+            id="username"
+            x-model="username"
+            required
+          />
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label" for="password">Password</label>
+        <div class="control">
+          <input
+            class="input"
+            type="password"
+            id="password"
+            x-model="password"
+            required
+          />
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label" for="password-confirm">Confirm Password</label>
+        <div class="control">
+          <input
+            class="input"
+            type="password"
+            id="password-confirm"
+            x-model="confirm"
+            required
+          />
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="control">
+          <button class="button is-primary" type="submit">Sign Up</button>
+        </div>
+      </div>
+
+      <p x-show="error" class="has-text-danger" x-text="error"></p>
+    </form>
+
+    <p class="mt-4">
+      Already have an account?
+      <a href="/sign-in">Sign in</a>
+    </p>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="content container is-max-desktop">
+    <a href="/">home</a>
+  </div>
+</footer>
+{% endblock body %}

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+<!---->
+{% block body %}
+<section class="section">
+  <div class="container is-max-desktop">
+    <h1 class="title is-3">Sign In</h1>
+
+    <form
+      x-data="{ username: '', password: '', error: '' }"
+      x-on:submit.prevent="
+        error = '';
+        const res = await fetch('/sign-in', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+        if (data.ok) { window.location.href = '/'; }
+        else { error = data.error; }
+      "
+    >
+      <div class="field">
+        <label class="label" for="username">Username</label>
+        <div class="control">
+          <input
+            class="input"
+            type="text"
+            id="username"
+            x-model="username"
+            required
+          />
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label" for="password">Password</label>
+        <div class="control">
+          <input
+            class="input"
+            type="password"
+            id="password"
+            x-model="password"
+            required
+          />
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="control">
+          <button class="button is-primary" type="submit">Sign In</button>
+        </div>
+      </div>
+
+      <p x-show="error" class="has-text-danger" x-text="error"></p>
+    </form>
+
+    <p class="mt-4">
+      Don't have an account?
+      <a href="/sign-up">Sign up</a>
+    </p>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="content container is-max-desktop">
+    <a href="/">home</a>
+  </div>
+</footer>
+{% endblock body %}
