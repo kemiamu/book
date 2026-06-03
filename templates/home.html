@@ -1,7 +1,45 @@
 {% extends "base.html" %}
+<!---->
+{% block body %}
+<section class="section">
+  <div class="container is-max-desktop">
+    <h1 class="title is-3">{{ site_title }}</h1>
+  </div>
+</section>
 
-{% block title %}{{ page_title }} - {{ site_title }}{% endblock title %}
+<section class="section">
+  <div class="container is-max-desktop">
+    <h2 class="title is-4">Pages</h2>
+    {% if pages %}
+    <ul>
+      {% for name, title in pages %}
+      <li><a href="/{{ name }}">{{ title }}</a></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="has-text-grey">No pages yet</p>
+    {% endif %}
+  </div>
+</section>
 
-{% block content %}
-{{ body | safe }}
-{% endblock content %}
+<section class="section">
+  <div class="container is-max-desktop">
+    <h2 class="title is-4">Files</h2>
+    {% if files %}
+    <ul>
+      {% for name, title in files %}
+      <li><a href="/files/{{ name }}">{{ title }}</a></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="has-text-grey">No files yet</p>
+    {% endif %}
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="content container is-max-desktop">
+    <a href="/sign-in">sign in</a>
+  </div>
+</footer>
+{% endblock body %}

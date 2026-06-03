@@ -10,6 +10,8 @@ mod pages;
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt().init();
+
     let config = Config::init("server.toml").expect("failed to load config");
     let db = Database::open("data.redb").expect("failed to open database");
     let templates = Tera::new("templates/**/*").expect("failed to load templates");
