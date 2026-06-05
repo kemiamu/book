@@ -21,10 +21,14 @@ pub struct ResourceMeta {
 }
 
 impl ResourceMeta {
-    pub fn new(title: String, creator: String, tags: HashSet<String>) -> Self {
+    pub fn new(
+        title: impl Into<String>,
+        creator: impl Into<String>,
+        tags: HashSet<String>,
+    ) -> Self {
         Self {
-            title,
-            creator,
+            title: title.into(),
+            creator: creator.into(),
             date: time::UtcDateTime::now().unix_timestamp(),
             tags,
         }

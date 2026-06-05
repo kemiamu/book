@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 axum = "0.8.9"
+axum-extra = { version = "0.12.6", features = ["cookie", "cookie-signed"] }
 hex = "0.4.3"
 pulldown-cmark = "0.13.4"
 redb = "4.1.0"

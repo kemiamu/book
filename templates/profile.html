@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+<!---->
+{% block title %}Profile - {{ site_title }}{% endblock title %}
+<!---->
+{% block body %}
+<section class="section" x-data="app()">
+  <div class="container is-max-desktop">
+    <h1 class="title is-3">Profile</h1>
+
+    <div class="box">
+      <h2 class="title is-5">Invite Code</h2>
+      <p class="mb-3">Generate an invite code to share with others so they can sign up.</p>
+
+      <div class="field has-addons">
+        <div class="control is-expanded">
+          <input
+            class="input"
+            type="text"
+            id="invite-code"
+            x-model="code"
+            readonly
+            placeholder="Click the button to generate an invite code"
+          />
+        </div>
+        <div class="control">
+          <button class="button is-primary" x-on:click="generate" :disabled="loading" :class="{ 'is-loading': loading }">
+            Generate
+          </button>
+        </div>
+        <div class="control">
+          <button class="button" x-on:click="copy" :disabled="!code">
+            Copy
+          </button>
+        </div>
+      </div>
+
+      <p x-show="error" class="has-text-danger" x-text="error"></p>
+      <p x-show="copied" class="has-text-success">Copied to clipboard!</p>
+    </div>
+
+    <p><a href="/">← home</a></p>
+  </div>
+</section>
+
+<script>
+  function app() {
+    return {
+      code: "",
+      error: "",
+      loading: false,
+      copied: false,
+      async generate() {
+        this.error = "";
+        this.copied = false;
+        this.loading = true;
+        try {
+          const res = await fetch("/profile/invite", { method: "POST" });
+          const data = await res.json();
+          if (res.ok) {
+            this.code = data.code;
+          } else {
+            this.error = data.error || "Failed to generate invite code";
+          }
+        } catch (e) {
+          this.error = "Network error";
+        } finally {
+          this.loading = false;
+        }
+      },
+      async copy() {
+        try {
+          await navigator.clipboard.writeText(this.code);
+          this.copied = true;
+        } catch {
+          // fallback: select the input text
+          document.getElementById("invite-code").select();
+        }
+      },
+    };
+  }
+</script>
+{% endblock body %}

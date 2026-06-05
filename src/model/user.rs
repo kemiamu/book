@@ -1,4 +1,10 @@
-use crate::model::Mac;
+use crate::CONFIG;
+use crate::crypto::{Mac, Signable, Signed};
+use crate::model::error::AppError;
+use axum::extract::FromRequestParts;
+use axum::http::StatusCode;
+use axum::http::request::Parts;
+use axum_extra::extract::cookie::CookieJar;
 use redb::TableDefinition;
 use rkyv::{Archive, rancor};
 
@@ -13,48 +19,20 @@ pub struct User {
 impl User {
     const PASSWD_TAG: &str = "password";
 
-    pub fn new(password: impl AsRef<[u8]>, key: impl AsRef<[u8]>, parent: String) -> Self {
-        let password = Mac::new(password, key, Self::PASSWD_TAG);
+    pub fn new(
+        password: impl AsRef<[u8]>,
+        secret: impl AsRef<[u8]>,
+        parent: impl Into<String>,
+    ) -> Self {
+        let password = Mac::new(password, secret, Self::PASSWD_TAG);
+        let parent = parent.into();
         Self { password, parent }
     }
 
-    pub fn verify(&self, password: impl AsRef<[u8]>, key: impl AsRef<[u8]>) -> bool {
-        let expected = Mac::new(password, key, Self::PASSWD_TAG);
+    pub fn verify(&self, password: impl AsRef<[u8]>, secret: impl AsRef<[u8]>) -> bool {
+        let expected = Mac::new(password, secret, Self::PASSWD_TAG);
         self.password == expected
     }
-}
-
-// signature
-
-pub struct Signed<T: Signable> {
-    pub inner: T,
-}
-
-impl<T: Signable> Signed<T> {
-    pub fn new(inner: T) -> Self {
-        Self { inner }
-    }
-
-    pub fn parse(s: &str, key: impl AsRef<[u8]>) -> Option<Self> {
-        let (hex, sig) = s.rsplit_once('.')?;
-        let data = hex::decode(hex).ok()?;
-        let inner = T::deserialize(&data)?;
-        let expected = Mac::new(&data, key, T::tag()).to_string();
-        (sig == expected && inner.is_valid()).then_some(Self { inner })
-    }
-
-    pub fn generate(&self, key: impl AsRef<[u8]>) -> String {
-        let data = self.inner.serialize();
-        let sig = Mac::new(&data, key, T::tag());
-        format!("{}.{}", hex::encode(&data), sig)
-    }
-}
-
-pub trait Signable: Sized {
-    fn tag() -> &'static str;
-    fn serialize(&self) -> Vec<u8>;
-    fn deserialize(bytes: &[u8]) -> Option<Self>;
-    fn is_valid(&self) -> bool;
 }
 
 // invite
@@ -68,10 +46,10 @@ pub struct Invitation {
 impl Invitation {
     pub const EXPIRY_SECS: i64 = 7 * 24 * 60 * 60;
 
-    pub fn new(inviter: String) -> Self {
+    pub fn new(inviter: impl Into<String>) -> Self {
         let now = time::UtcDateTime::now().unix_timestamp();
         Self {
-            inviter,
+            inviter: inviter.into(),
             expires_at: now + Self::EXPIRY_SECS,
         }
     }
@@ -103,10 +81,10 @@ pub struct Session {
 impl Session {
     pub const EXPIRY_SECS: i64 = 90 * 24 * 60 * 60;
 
-    pub fn new(user: String) -> Self {
+    pub fn new(user: impl Into<String>) -> Self {
         let now = time::UtcDateTime::now().unix_timestamp();
         Self {
-            user,
+            user: user.into(),
             expires_at: now + Self::EXPIRY_SECS,
         }
     }
@@ -124,6 +102,38 @@ impl Signable for Session {
     }
     fn deserialize(bytes: &[u8]) -> Option<Self> {
         rkyv::from_bytes::<Session, rancor::Error>(bytes).ok()
+    }
+}
+
+// token
+
+/// Authenticated user extracted from session cookie.
+#[derive(Debug)]
+pub struct UserToken(pub Result<String, AppError>);
+
+impl<S: Send + Sync + 'static> FromRequestParts<S> for UserToken {
+    type Rejection = std::convert::Infallible;
+
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
+        let jar = CookieJar::from_request_parts(parts, &())
+            .await
+            .unwrap_or_default();
+
+        let Some(cookie) = jar.get("session") else {
+            return Ok(UserToken(Err(AppError::new(
+                StatusCode::UNAUTHORIZED,
+                "Not signed in",
+            ))));
+        };
+
+        let Some(session) = Signed::<Session>::parse(cookie.value(), &CONFIG.secret) else {
+            return Ok(UserToken(Err(AppError::new(
+                StatusCode::UNAUTHORIZED,
+                "Invalid or expired session",
+            ))));
+        };
+
+        Ok(UserToken(Ok(session.inner.user)))
     }
 }
 

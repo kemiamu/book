@@ -14,9 +14,8 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password }),
         });
-        const data = await res.json();
-        if (data.ok) { window.location.href = '/'; }
-        else { error = data.error; }
+        if (res.ok) { window.location.href = '/'; }
+        else { const data = await res.json(); error = data.error; }
       "
     >
       <div class="field">

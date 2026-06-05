@@ -21,7 +21,9 @@ async fn main() {
         .route("/sign-in", get(routes::sign_in_page))
         .route("/sign-in", post(routes::sign_in_post))
         .route("/sign-up", get(routes::sign_up_page))
-        .route("/sign-up", post(routes::sign_up_post));
+        .route("/sign-up", post(routes::sign_up_post))
+        .route("/profile", get(routes::profile_page))
+        .route("/profile/invite", get(routes::generate_invite));
 
     let app = app
         .fallback_service(ServeDir::new(&CONFIG.site_root))
