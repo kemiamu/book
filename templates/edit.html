@@ -9,10 +9,15 @@
 {% block body %}
 <!-- -->
 {% if slug | length > 0 %}
+<!-- -->
 {{ ui::section_header(title='Edit Page', current='Edit') }}
+<!-- -->
 {% else %}
+<!-- -->
 {{ ui::section_header(title='New Page', current='Edit') }}
+<!-- -->
 {% endif %}
+<!-- -->
 <section class="section">
   <div class="container is-max-desktop">
     <form
@@ -39,36 +44,17 @@
           Used in URL: /view/<strong x-text="slug||'...'"></strong>
         </p>
       </div>
+      <!-- -->
       {{ ui::input(label="Title", id="title", model="title", required=true,
       placeholder="Page title") }}
-      <div class="field">
-        <div class="level">
-          <div class="level-left">
-            <label class="label" for="body">Body (Markdown)</label>
-          </div>
-          <div class="level-right">
-            <a
-              class="button is-small is-ghost"
-              x-on:click="togglePreview"
-              type="button"
-              ><span x-text="preview?'Edit':'Preview'"></span
-            ></a>
-          </div>
-        </div>
-        <div class="control">
-          <textarea
-            class="textarea"
-            id="body"
-            x-model="body"
-            rows="20"
-            placeholder="Write content in Markdown..."
-            x-show="!preview"
-          ></textarea>
-          <div class="box" x-show="preview" x-html="body"></div>
-        </div>
-      </div>
+      <!-- -->
+      {{ ui::textarea(label="Body (Markdown)", id="body", model="body", rows=20,
+      placeholder="Write content in Markdown...") }}
+      <!-- -->
       {{ ui::button_group(submit_text="Save", loading_text="Saving...",
-      cancel_url="/") }} {{ ui::error_notification() }}
+      cancel_url="/") }}
+      <!-- -->
+      {{ ui::error_notification() }}
     </form>
   </div>
 </section>
