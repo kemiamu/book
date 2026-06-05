@@ -29,7 +29,7 @@
     </script>
   </head>
   <body class="is-flex is-flex-direction-column">
-    <main class="is-flex-grow-1">{% block body %}{% endblock body %}</main>
+    <main>{% block body %}{% endblock body %}</main>
 
     {% include "_footer.tera" %}
   </body>

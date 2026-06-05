@@ -4,10 +4,7 @@
   {% for item in items %}
   <div class="column is-half">
     <a href="/{{ type }}/{{ item.name }}" class="card">
-      <div
-        class="card-content"
-        :class="dark ? 'has-background-black-ter' : 'has-background-white-ter'"
-      >
+      <div class="card-content" :class="dark ? 'has-background-black-ter' : 'has-background-white-ter'">
         <p class="title is-5">{{ item.title }}</p>
         <p class="subtitle is-6 has-text-grey">{{ item.date }}</p>
       </div>

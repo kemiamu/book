@@ -129,25 +129,28 @@ pub async fn view_page(
 /// show profile page
 pub async fn profile_page(
     jar: CookieJar,
-    book::model::user::UserToken(_token): book::model::user::UserToken,
+    book::model::user::UserToken(token): book::model::user::UserToken,
 ) -> Result<Html<String>, AppError> {
     let user = jar
         .get("session")
         .and_then(|c| Signed::<Session>::parse(c.value(), &CONFIG.secret))
         .map(|s| s.inner.user);
+
+    let invite = book::model::user::Invitation::new(&token?);
+    let invitation = Signed::new(invite.clone());
+    let code = invitation.generate(&CONFIG.secret);
+
+    let expires_at = OffsetDateTime::from_unix_timestamp(invite.expires_at)
+        .ok()
+        .and_then(|d| d.format(&Iso8601::DATE).ok())
+        .unwrap_or_default();
+
     let page = PageContext::new()
         .insert("page_title", "Profile")
-        .insert("user", &user);
+        .insert("user", &user)
+        .insert("invite_code", &code)
+        .insert("invite_code_expiry", &expires_at);
     Ok(Html(page.render("profile.tera")?))
-}
-
-/// generate an invite code
-pub async fn generate_invite(
-    book::model::user::UserToken(token): book::model::user::UserToken,
-) -> Result<Json<serde_json::Value>, AppError> {
-    let invitation = Signed::new(book::model::user::Invitation::new(&token?));
-    let code = invitation.generate(&CONFIG.secret);
-    Ok(Json(serde_json::json!({"code": code})))
 }
 
 // download

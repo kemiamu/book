@@ -1,41 +1,57 @@
 {% extends "_base.tera" %}
 {% block title %}Profile - {{ site_title }}{% endblock title %}
-{% block head %}
-<script defer src="{{ base_url }}/js/profile.js"></script>
-{% endblock head %}
 {% block body %}
 <section class="section">
   <div class="container is-max-desktop">
     <h1 class="title is-4">Profile</h1>
-    <div x-data="profileApp()" data-base-url="{{ base_url }}">
-      <h2 class="title is-6">Invite Code</h2>
-      <p class="has-text-grey is-size-7">
-        Generate an invite code to share with others.
-      </p>
-      <div class="buttons">
+    <div x-data="{
+      show: false,
+      code: '{{ invite_code }}',
+      baseUrl: '{{ base_url }}',
+      copied: false,
+      copy() {
+        navigator.clipboard.writeText(this.code).then(() => {
+          this.copied = true;
+          setTimeout(() => this.copied = false, 2000);
+        });
+      }
+    }">
+      <h2 class="title is-5">Invite Code</h2>
+      <div class="block">
+        <p class="has-text-grey">
+          An invite code is generated each time you visit this page. It expires in 7 days and cannot be revoked or restricted during its validity.
+        </p>
+      </div>
+      <div class="block">
+        <div class="buttons">
         <button
-          class="button is-primary is-rounded"
-          x-on:click="generate"
-          :disabled="loading"
-          :class="{'is-loading':loading}"
+          class="button"
+          :class="show ? 'is-primary' : 'is-warning'"
+          x-on:click="show = !show"
         >
-          <span x-text="loading?'Generating...':'Generate'"></span>
+          <span x-text="show ? 'Hide' : 'Show invite code'"></span>
         </button>
         <button
-          class="button is-rounded"
+          class="button"
           x-on:click="copy"
-          :disabled="!code"
+          x-show="show"
+          x-cloak
         >
           Copy
         </button>
+        </div>
       </div>
-      <div x-show="code" x-cloak>
-        <div class="box is-family-monospace is-size-7" x-text="code"></div>
-        <p class="is-size-7 has-text-success" x-show="copied" x-cloak>
+      <div x-show="show" x-cloak class="block">
+        <div class="notification is-warning is-block">
+          <p>
+            This code is valid until {{ invite_code_expiry }}. It cannot be revoked, and anyone with it can invite unlimited users.
+          </p>
+          <p class="block"><a class="has-text-weight-bold" :href="baseUrl + '/sign-up?invite=' + code" x-text="baseUrl + '/sign-up?invite=' + code"></a></p>
+        </div>
+        <p class="has-text-success" x-show="copied" x-cloak>
           Copied to clipboard!
         </p>
       </div>
-      <p x-show="error" class="has-text-danger is-size-7" x-text="error" x-cloak></p>
     </div>
     <a href="/" class="has-text-grey">&larr; Back to Home</a>
   </div>
