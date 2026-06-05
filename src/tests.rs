@@ -5,7 +5,6 @@ mod tests {
 
     #[test]
     fn init_tables() {
-        let _ = std::fs::remove_file("data.redb");
         let db = redb::Database::create("data.redb").unwrap();
 
         let tx = db.begin_write().unwrap();

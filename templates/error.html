@@ -4,10 +4,15 @@
 <!---->
 {% block body %}
 <section class="section">
-  <div class="container">
+  <div class="container is-max-desktop">
     <h1 class="title">{{ code }} {{ reason }}</h1>
     <p class="subtitle">{{ message }}</p>
-    <p><a href="{{ base_url }}/">← 返回主页</a></p>
   </div>
 </section>
+
+<footer class="footer">
+  <div class="content container is-max-desktop">
+    <p><a href="{{ base_url }}/">← home</a></p>
+  </div>
+</footer>
 {% endblock body %}

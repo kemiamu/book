@@ -83,7 +83,9 @@ macro_rules! impl_value {
             where
                 Self: 'a,
             {
-                rkyv::from_bytes::<$ty, rancor::Error>(data).unwrap()
+                // redb 返回的切片不一定对齐，拷贝到 Vec 确保对齐
+                let owned = data.to_vec();
+                rkyv::from_bytes::<$ty, rancor::Error>(&owned).unwrap()
             }
 
             fn as_bytes<'a, 'b: 'a>(value: &'a Self::SelfType<'b>) -> Self::AsBytes<'a>

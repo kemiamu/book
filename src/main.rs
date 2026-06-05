@@ -26,7 +26,10 @@ async fn main() {
         .route("/profile", get(routes::profile_page))
         .route("/profile/invite", get(routes::generate_invite))
         .route("/edit", get(routes::edit_page))
-        .route("/edit", post(routes::edit_post));
+        .route("/edit", post(routes::edit_post))
+        .route("/upload", get(routes::file_upload_page))
+        .route("/upload", post(routes::file_upload_post))
+        .route("/file/{slug}", get(routes::file_download));
 
     let app = app
         .fallback_service(ServeDir::new(&CONFIG.site_root))

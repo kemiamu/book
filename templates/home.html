@@ -28,7 +28,7 @@
     {% if files %}
     <ul>
       {% for f in files %}
-      <li><a href="/files/{{ f.name }}">{{ f.title }}</a></li>
+      <li><a href="/file/{{ f.name }}">{{ f.title }}</a></li>
       {% endfor %}
     </ul>
     {% else %}
@@ -43,6 +43,7 @@
     <p><a href="/sign-out">sign out @{{ user }}</a></p>
     <p><a href="/edit">new page</a></p>
     <p><a href="/profile">invite</a></p>
+    <p><a href="/upload">upload file</a></p>
     {% else %}
     <p><a href="/sign-in">sign in</a></p>
     {% endif %}

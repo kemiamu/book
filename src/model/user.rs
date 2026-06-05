@@ -162,7 +162,8 @@ impl redb::Value for User {
     where
         Self: 'a,
     {
-        rkyv::from_bytes::<User, rancor::Error>(data).unwrap()
+        let owned = data.to_vec();
+        rkyv::from_bytes::<User, rancor::Error>(&owned).unwrap()
     }
 
     fn as_bytes<'a, 'b: 'a>(value: &'a Self::SelfType<'b>) -> Self::AsBytes<'a>

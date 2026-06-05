@@ -4,9 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-axum = "0.8.9"
+axum = { version = "0.8.9", features = ["multipart"] }
 axum-extra = { version = "0.12.6", features = ["cookie", "cookie-signed"] }
 hex = "0.4.3"
+mime_guess = "2.0.5"
 pulldown-cmark = "0.13.4"
 redb = "4.1.0"
 rkyv = "0.8.16"
