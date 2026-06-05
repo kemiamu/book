@@ -12,8 +12,8 @@
     <h2 class="title is-4">Pages</h2>
     {% if pages %}
     <ul>
-      {% for name, title in pages %}
-      <li><a href="/page/{{ name }}">{{ title }}</a></li>
+      {% for p in pages %}
+      <li><a href="/view/{{ p.name }}">{{ p.title }}</a></li>
       {% endfor %}
     </ul>
     {% else %}
@@ -27,8 +27,8 @@
     <h2 class="title is-4">Files</h2>
     {% if files %}
     <ul>
-      {% for name, title in files %}
-      <li><a href="/files/{{ name }}">{{ title }}</a></li>
+      {% for f in files %}
+      <li><a href="/files/{{ f.name }}">{{ f.title }}</a></li>
       {% endfor %}
     </ul>
     {% else %}
@@ -39,7 +39,13 @@
 
 <footer class="footer">
   <div class="content container is-max-desktop">
-    <a href="/sign-in">sign in</a>
+    {% if user %}
+    <p><a href="/sign-out">sign out @{{ user }}</a></p>
+    <p><a href="/edit">new page</a></p>
+    <p><a href="/profile">invite</a></p>
+    {% else %}
+    <p><a href="/sign-in">sign in</a></p>
+    {% endif %}
   </div>
 </footer>
 {% endblock body %}

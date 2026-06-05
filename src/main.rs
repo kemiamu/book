@@ -17,13 +17,16 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(routes::home_page))
-        .route("/page/{page}", get(routes::view_page))
+        .route("/view/{page}", get(routes::view_page))
         .route("/sign-in", get(routes::sign_in_page))
         .route("/sign-in", post(routes::sign_in_post))
         .route("/sign-up", get(routes::sign_up_page))
         .route("/sign-up", post(routes::sign_up_post))
+        .route("/sign-out", get(routes::sign_out))
         .route("/profile", get(routes::profile_page))
-        .route("/profile/invite", get(routes::generate_invite));
+        .route("/profile/invite", get(routes::generate_invite))
+        .route("/edit", get(routes::edit_page))
+        .route("/edit", post(routes::edit_post));
 
     let app = app
         .fallback_service(ServeDir::new(&CONFIG.site_root))

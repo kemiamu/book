@@ -9,38 +9,40 @@
 
     <div class="box">
       <h2 class="title is-5">Invite Code</h2>
-      <p class="mb-3">Generate an invite code to share with others so they can sign up.</p>
+      <p class="mb-3">
+        Generate an invite code to share with others so they can sign up.
+      </p>
 
-      <div class="field has-addons">
-        <div class="control is-expanded">
-          <input
-            class="input"
-            type="text"
-            id="invite-code"
-            x-model="code"
-            readonly
-            placeholder="Click the button to generate an invite code"
-          />
-        </div>
-        <div class="control">
-          <button class="button is-primary" x-on:click="generate" :disabled="loading" :class="{ 'is-loading': loading }">
-            Generate
-          </button>
-        </div>
-        <div class="control">
-          <button class="button" x-on:click="copy" :disabled="!code">
-            Copy
-          </button>
-        </div>
+      <div class="buttons mb-3">
+        <button
+          class="button is-primary"
+          x-on:click="generate"
+          :disabled="loading"
+          :class="{ 'is-loading': loading }"
+        >
+          Generate
+        </button>
+        <button class="button" x-on:click="copy" :disabled="!code">Copy</button>
       </div>
+
+      <div
+        x-show="code"
+        class="notification is-info"
+        style="word-break: break-all"
+        x-text="code"
+      ></div>
 
       <p x-show="error" class="has-text-danger" x-text="error"></p>
       <p x-show="copied" class="has-text-success">Copied to clipboard!</p>
     </div>
-
-    <p><a href="/">← home</a></p>
   </div>
 </section>
+
+<footer class="footer">
+  <div class="content container is-max-desktop">
+    <p><a href="/">← home</a></p>
+  </div>
+</footer>
 
 <script>
   function app() {
@@ -54,10 +56,12 @@
         this.copied = false;
         this.loading = true;
         try {
-          const res = await fetch("/profile/invite", { method: "POST" });
+          const res = await fetch("/profile/invite");
           const data = await res.json();
           if (res.ok) {
-            this.code = data.code;
+            this.code =
+              "{{ base_url | safe }}/sign-up?invite=" +
+              encodeURIComponent(data.code);
           } else {
             this.error = data.error || "Failed to generate invite code";
           }
@@ -72,8 +76,7 @@
           await navigator.clipboard.writeText(this.code);
           this.copied = true;
         } catch {
-          // fallback: select the input text
-          document.getElementById("invite-code").select();
+          // ignore
         }
       },
     };

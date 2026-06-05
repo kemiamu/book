@@ -4,7 +4,7 @@
 <script>
   function app() {
     return {
-      invite: '{{ invite | default(value="") }}',
+      invite: {{ invite | default(value="") | json_encode | safe }},
       username: "",
       password: "",
       confirm: "",
@@ -24,10 +24,10 @@
             invite: this.invite,
           }),
         });
-        const data = await res.json();
-        if (data.ok) {
+        if (res.ok) {
           window.location.href = "/";
         } else {
+          const data = await res.json();
           this.error = data.error;
         }
       },
@@ -111,7 +111,7 @@
 
 <footer class="footer">
   <div class="content container is-max-desktop">
-    <a href="/">home</a>
+    <p><a href="/">home</a></p>
   </div>
 </footer>
 {% endblock body %}
