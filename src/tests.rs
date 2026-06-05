@@ -3,6 +3,8 @@ mod tests {
     use crate::model::res::{FILE_BLOBS, FILES, PAGE_BODIES, PAGES};
     use crate::model::user::{USERS, User};
 
+    // rm data.redb && cargo test init_tables && cargo test init_user -- <username> <password>
+
     #[test]
     /// initialize db tables
     fn init_tables() {

@@ -2,5 +2,4 @@
 
 A minimal wiki-like CMS. Write pages in Markdown, share files.
 
-> `book` (lib) — kemi written & reviewed.  
-> `book` (binary/template) — AI generated.
+> Only the lib crate is written and reviewed by kemi; everything else is AI-generated.
