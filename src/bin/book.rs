@@ -11,7 +11,7 @@ use tower_http::{compression::CompressionLayer, services::ServeDir};
 /// entry point
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt().init();
+    tracing_subscriber::fmt().without_time().init();
 
     let db = Database::open("data.redb").expect("failed to open database");
     let listener = TcpListener::bind(&CONFIG.server_addr).await.unwrap();
