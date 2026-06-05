@@ -31,27 +31,28 @@
         >
           <span x-text="show ? 'Hide' : 'Show invite code'"></span>
         </button>
-        <button
-          class="button"
-          x-on:click="copy"
-          x-show="show"
-          x-cloak
-        >
-          Copy
-        </button>
+        <template x-if="show">
+          <button class="button" x-on:click="copy">
+            Copy
+          </button>
+        </template>
         </div>
       </div>
-      <div x-show="show" x-cloak class="block">
-        <div class="notification is-warning is-block">
-          <p>
-            This code is valid until {{ invite_code_expiry }}. It cannot be revoked, and anyone with it can invite unlimited users.
-          </p>
-          <p class="block"><a class="has-text-weight-bold" style="word-break: break-all" :href="baseUrl + '/sign-up?invite=' + code" x-text="baseUrl + '/sign-up?invite=' + code"></a></p>
+      <template x-if="show">
+        <div class="block">
+          <div class="notification is-warning is-block">
+            <p>
+              This code is valid until {{ invite_code_expiry }}. It cannot be revoked, and anyone with it can invite unlimited users.
+            </p>
+            <p class="block"><a class="has-text-weight-bold" style="word-break: break-all" :href="baseUrl + '/sign-up?invite=' + code" x-text="baseUrl + '/sign-up?invite=' + code"></a></p>
+          </div>
+          <template x-if="copied">
+            <p class="has-text-success">
+              Copied to clipboard!
+            </p>
+          </template>
         </div>
-        <p class="has-text-success" x-show="copied" x-cloak>
-          Copied to clipboard!
-        </p>
-      </div>
+      </template>
     </div>
     <a href="/" class="has-text-grey">&larr; Back to Home</a>
   </div>
