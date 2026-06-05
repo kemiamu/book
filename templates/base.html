@@ -53,15 +53,7 @@
               >
             </p>
           </div>
-          <div class="level-right">
-            <button
-              class="button"
-              x-on:click="toggle"
-              title="Toggle dark mode"
-              :class="dark ? 'is-light' : 'is-dark'"
-              x-text="dark ? 'Light Mode' : 'Dark Mode'"
-            ></button>
-          </div>
+
         </div>
       </div>
     </footer>
@@ -69,14 +61,13 @@
     <script defer src="{{ base_url }}/alpine-3.15.8/cdn.min.js"></script>
     <script>
       function theme() {
+        const mq = window.matchMedia("(prefers-color-scheme: dark)");
         return {
-          dark:
-            localStorage.getItem("theme") === "dark" ||
-            (!localStorage.getItem("theme") &&
-              window.matchMedia("(prefers-color-scheme: dark)").matches),
-          toggle() {
-            this.dark = !this.dark;
-            localStorage.setItem("theme", this.dark ? "dark" : "light");
+          dark: mq.matches,
+          init() {
+            mq.addEventListener("change", (e) => {
+              this.dark = e.matches;
+            });
           },
         };
       }
