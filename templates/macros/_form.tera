@@ -16,7 +16,7 @@
 </div>
 {% endmacro input %}
 
-{% macro textarea(label, id, model, rows, placeholder) %}
+{% macro textarea(label, id, model, placeholder) %}
 <div class="field">
   <label class="label" for="{{ id }}">{{ label }}</label>
   <div class="control">
@@ -24,8 +24,8 @@
       class="textarea"
       id="{{ id }}"
       x-model="{{ model }}"
-      rows="{{ rows }}"
       placeholder="{{ placeholder }}"
+      style="height: 50vh;"
     ></textarea>
   </div>
 </div>

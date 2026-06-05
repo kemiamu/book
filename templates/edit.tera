@@ -81,7 +81,7 @@ function editApp() {
         </p>
       </div>
       {{ form::input(label="Title", id="title", model="title", required=true, placeholder="Page title") }}
-      {{ form::textarea(label="Body (Markdown)", id="body", model="body", rows=20, placeholder="Write content in Markdown...") }}
+      {{ form::textarea(label="Body (Markdown)", id="body", model="body", placeholder="Write content in Markdown...") }}
       {% if slug | length > 0 %}
         {% set cancel_url = "/view/" ~ slug %}
       {% else %}

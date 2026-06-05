@@ -17,6 +17,14 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/bulma/1.0.4/css/bulma.min.css"
     />
+    <style>
+      .content h1 { font-size: 1rem; text-decoration: line-through; }
+      .content h2 { font-size: 1.2rem; }
+      .content h3 { font-size: 1.1rem; }
+      .content h4,
+      .content h5,
+      .content h6 { font-size: 1rem; }
+    </style>
     {% block head %}{% endblock head %}
     <script
       defer

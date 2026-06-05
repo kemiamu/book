@@ -23,17 +23,17 @@
 {% macro page_header(title, current, show_edit) %}
 <section class="section">
   <div class="container is-max-desktop">
-    <div class="level is-mobile">
-      <div class="level-left">
-        <h1 class="title is-4 level-item">{{ title }}</h1>
+    <div class="columns is-mobile is-vcentered">
+      <div class="column">
+        <h1 class="title is-4 mb-0 pb-2">{{ title }}</h1>
+        {{ self::breadcrumb(current=title) }}
       </div>
       {% if show_edit and user %}
-      <div class="level-right">
-        <a class="button level-item" href="/edit?page={{ current }}">Edit</a>
+      <div class="column is-narrow">
+        <a class="button" href="/edit?page={{ current }}">Edit</a>
       </div>
       {% endif %}
     </div>
-    {{ self::breadcrumb(current=title) }}
   </div>
 </section>
 {% endmacro page_header %}

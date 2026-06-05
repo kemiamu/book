@@ -5,9 +5,7 @@
 {{ nav::page_header(title=page_title, current=slug, show_edit=true) }}
 <section class="section">
   <div class="container is-max-desktop">
-    <div class="content is-medium">{{ content | safe }}</div>
-    <hr />
-    {{ nav::back_link() }}
+    <div class="content">{{ content | safe }}</div>
   </div>
 </section>
 {% endblock body %}
