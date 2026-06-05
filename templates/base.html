@@ -11,6 +11,11 @@
       href="{{ base_url }}/bulma-1.0.4/css/bulma.min.css"
     />
     {% block head %}{% endblock head %}
+    <style>
+      [data-theme="dark"] .card-content.has-background-white-ter {
+        background-color: hsl(0, 0%, 14%) !important;
+      }
+</style>    </style>
   </head>
   <body class="is-flex is-flex-direction-column">
     <main class="is-flex-grow-1">{% block body %}{% endblock body %}</main>

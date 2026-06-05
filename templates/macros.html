@@ -62,6 +62,21 @@ autocomplete="", extra_attr="") %}
 </div>
 {% endmacro input %}
 <!-- -->
+{% macro textarea(label, id, model, rows, placeholder) %}
+<div class="field">
+  <label class="label" for="{{ id }}">{{ label }}</label>
+  <div class="control">
+    <textarea
+      class="textarea"
+      id="{{ id }}"
+      x-model="{{ model }}"
+      rows="{{ rows | default(value=5) }}"
+      placeholder="{{ placeholder | default(value='') }}"
+    ></textarea>
+  </div>
+</div>
+{% endmacro textarea %}
+<!-- -->
 {% macro button_group(submit_text, loading_text, cancel_url) %}
 <div class="field is-grouped">
   <div class="control">
@@ -84,11 +99,11 @@ autocomplete="", extra_attr="") %}
 <div class="columns is-multiline">
   {% for item in items %}
   <div class="column is-half">
-    <a
-      href="/{{ type }}/{{ item.name }}"
-      class="card{% if type == 'view' %} has-background-info-light{% else %} has-background-success-light{% endif %}"
-    >
-      <div class="card-content">
+    <a href="/{{ type }}/{{ item.name }}" class="card">
+      <div
+        class="card-content"
+        :class="dark ? 'has-background-black-ter' : 'has-background-white-ter'"
+      >
         <p class="title is-5">{{ item.title }}</p>
         <p class="subtitle is-6 has-text-grey">{{ item.date }}</p>
       </div>

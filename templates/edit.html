@@ -23,10 +23,10 @@
     <form
       x-data="editApp()"
       x-on:submit.prevent="submit"
-      data-slug="{{ slug | json_encode | safe }}"
-      data-title="{{ title | json_encode | safe }}"
-      data-body="{{ body | json_encode | safe }}"
-      data-error="{{ error | json_encode | safe }}"
+      data-slug="{{ slug | safe }}"
+      data-title="{{ title | safe }}"
+      data-body="{{ body | safe }}"
+      data-error="{{ error | safe }}"
     >
       <div class="field">
         <label class="label" for="slug">Slug (URL name)</label>
@@ -51,8 +51,18 @@
       {{ ui::textarea(label="Body (Markdown)", id="body", model="body", rows=20,
       placeholder="Write content in Markdown...") }}
       <!-- -->
+      {% if slug | length > 0 %}
+      <!-- -->
+      {% set cancel_url = "/view/" ~ slug %}
+      <!-- -->
+      {% else %}
+      <!-- -->
+      {% set cancel_url = "/" %}
+      <!-- -->
+      {% endif %}
+      <!-- -->
       {{ ui::button_group(submit_text="Save", loading_text="Saving...",
-      cancel_url="/") }}
+      cancel_url=cancel_url) }}
       <!-- -->
       {{ ui::error_notification() }}
     </form>
