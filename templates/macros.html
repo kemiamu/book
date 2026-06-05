@@ -1,17 +1,133 @@
-{# ── Breadcrumb: Home > current page ── #} {% macro breadcrumb(current) %}
+{% macro breadcrumb(current) %}
 <nav class="breadcrumb" aria-label="breadcrumbs">
   <ul>
     <li><a href="/">Home</a></li>
     <li class="is-active"><a href="#" aria-current="page">{{ current }}</a></li>
   </ul>
 </nav>
-{% endmacro breadcrumb %} {# ── Error notification (Alpine: x-data must have
-`error`) ── #} {% macro error_notification() %}
+{% endmacro breadcrumb %}
+<!-- -->
+{% macro section_header(title, current) %}
+<section class="section">
+  <div class="container is-max-desktop">
+    <h1 class="title is-4">{{ title }}</h1>
+    {{ self::breadcrumb(current=current) }}
+  </div>
+</section>
+{% endmacro section_header %}
+<!-- -->
+{% macro error_notification() %}
 <div class="notification is-danger is-light" x-show="error" x-cloak>
   <button class="delete" x-on:click="error=''"></button>
   <p x-text="error"></p>
 </div>
-{% endmacro error_notification %} {# ── Back to Home link ── #} {% macro
-back_link() %}
+{% endmacro error_notification %}
+<!-- -->
+{% macro back_link() %}
 <a href="/" class="has-text-grey">&larr; Back to Home</a>
 {% endmacro back_link %}
+<!-- -->
+{% macro input(label, id, model, required, placeholder, type="text",
+autocomplete="", extra_attr="") %}
+<div class="field">
+  <label class="label" for="{{ id }}">{{ label }}</label>
+  <div class="control">
+    <input
+      class="input"
+      type="{{ type | default(value='text') }}"
+      id="{{ id }}"
+      x-model="{{ model }}"
+      {%
+      if
+      required
+      %}required{%
+      endif
+      %}
+      placeholder="{{ placeholder | default(value='') }}"
+      {%
+      if
+      autocomplete
+      %}autocomplete="{{ autocomplete }}"
+      {%
+      endif
+      %}
+      {{
+      extra_attr
+      |
+      default(value=""
+      )
+      }}
+    />
+  </div>
+</div>
+{% endmacro input %}
+<!-- -->
+{% macro button_group(submit_text, loading_text, cancel_url) %}
+<div class="field is-grouped">
+  <div class="control">
+    <button
+      class="button is-primary"
+      type="submit"
+      :disabled="loading"
+      :class="{'is-loading':loading}"
+    >
+      <span x-text="loading?'{{ loading_text }}':'{{ submit_text }}'"></span>
+    </button>
+  </div>
+  <div class="control">
+    <a class="button" href="{{ cancel_url }}">Cancel</a>
+  </div>
+</div>
+{% endmacro button_group %}
+<!-- -->
+{% macro card_grid(items, type) %} {% if items %}
+<div class="columns is-multiline">
+  {% for item in items %}
+  <div class="column is-half">
+    <a
+      href="/{{ type }}/{{ item.name }}"
+      class="card{% if type == 'view' %} has-background-info-light{% else %} has-background-success-light{% endif %}"
+    >
+      <div class="card-content">
+        <p class="title is-5">{{ item.title }}</p>
+        <p class="subtitle is-6 has-text-grey">{{ item.date }}</p>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="has-text-centered">
+  <p class="has-text-grey">No {{ type }}s yet</p>
+</div>
+{% endif %} {% endmacro card_grid %}
+<!-- -->
+{% macro listing(title, items, type) %}
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="level is-mobile">
+      <div class="level-left"><h2 class="title is-4">{{ title }}</h2></div>
+      <div class="level-right">
+        <span class="tag is-medium">{{ items | length }}</span>
+      </div>
+    </div>
+    {{ self::card_grid(items=items, type=type) }}
+  </div>
+</section>
+{% endmacro listing %}
+<!-- -->
+{% macro page_header(title, current, show_edit) %}
+<section class="section">
+  <div class="container is-max-desktop">
+    <div
+      class="is-flex is-justify-content-space-between is-align-items-flex-start"
+    >
+      <h1 class="title is-4">{{ title }}</h1>
+      {% if show_edit and user %}
+      <a class="button" href="/edit?page={{ current }}">Edit</a>
+      {% endif %}
+    </div>
+    {{ self::breadcrumb(current=title) }}
+  </div>
+</section>
+{% endmacro page_header %}
