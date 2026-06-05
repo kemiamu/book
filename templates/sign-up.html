@@ -1,117 +1,119 @@
-{% extends "base.html" %}
-<!---->
-{% block head %}
+{% extends "base.html" %} {% import "macros.html" as ui %} {% block title %}Sign
+Up - {{ site_title }}{% endblock title %} {% block head %}
 <script>
-  function app() {
+  function signUpApp() {
     return {
       invite: {{ invite | default(value="") | json_encode | safe }},
-      username: "",
-      password: "",
-      confirm: "",
-      error: "",
+      username: "", password: "", confirm: "", error: "", loading: false,
       async submit() {
         this.error = "";
-        if (this.password !== this.confirm) {
-          this.error = "Passwords do not match";
-          return;
-        }
-        const res = await fetch("/sign-up", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            username: this.username,
-            password: this.password,
-            invite: this.invite,
-          }),
-        });
-        if (res.ok) {
-          window.location.href = "/";
-        } else {
-          const data = await res.json();
-          this.error = data.error;
-        }
-      },
+        if (this.password !== this.confirm) { this.error = "Passwords do not match"; return; }
+        if (this.password.length < 6) { this.error = "Password must be at least 6 characters"; return; }
+        this.loading = true;
+        try {
+          const r = await fetch("/sign-up", {method:"POST",headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({username:this.username,password:this.password,invite:this.invite})});
+          if (r.ok) window.location.href = "/";
+          else { const d = await r.json(); this.error = d.error || "Sign up failed"; }
+        } catch(e) { this.error = "Network error"; }
+        finally { this.loading = false; }
+      }
     };
   }
 </script>
-{% endblock head %}
-<!---->
-{% block body %}
+{% endblock head %} {% block body %}
 <section class="section">
-  <div class="container is-max-desktop">
-    <h1 class="title is-3">Sign Up</h1>
-    <form x-data="app()" x-on:submit.prevent="submit">
-      <div class="field">
-        <label class="label" for="invite">Invite Code</label>
-        <div class="control">
-          <input
-            class="input"
-            type="text"
-            id="invite"
-            x-model="invite"
-            required
-          />
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-half">
+        <div class="has-text-centered">
+          <h1 class="title is-4">Create account</h1>
+          <p class="has-text-grey">Join {{ site_title }}</p>
         </div>
-      </div>
-
-      <div class="field">
-        <label class="label" for="username">Username</label>
-        <div class="control">
-          <input
-            class="input"
-            type="text"
-            id="username"
-            x-model="username"
-            required
-          />
+        <div class="card">
+          <div class="card-content">
+            <form x-data="signUpApp()" x-on:submit.prevent="submit">
+              <div class="field">
+                <label class="label" for="invite">Invite Code</label>
+                <div class="control">
+                  <input
+                    class="input"
+                    type="text"
+                    id="invite"
+                    x-model="invite"
+                    required
+                    placeholder="Paste invite code"
+                  />
+                </div>
+              </div>
+              <div class="field">
+                <label class="label" for="username">Username</label>
+                <div class="control">
+                  <input
+                    class="input"
+                    type="text"
+                    id="username"
+                    x-model="username"
+                    required
+                    placeholder="Choose a username"
+                    autocomplete="username"
+                  />
+                </div>
+              </div>
+              <div class="field">
+                <label class="label" for="password">Password</label>
+                <div class="control">
+                  <input
+                    class="input"
+                    type="password"
+                    id="password"
+                    x-model="password"
+                    required
+                    placeholder="At least 6 characters"
+                    autocomplete="new-password"
+                  />
+                </div>
+              </div>
+              <div class="field">
+                <label class="label" for="password-confirm"
+                  >Confirm Password</label
+                >
+                <div class="control">
+                  <input
+                    class="input"
+                    type="password"
+                    id="password-confirm"
+                    x-model="confirm"
+                    required
+                    placeholder="Repeat password"
+                    autocomplete="new-password"
+                  />
+                </div>
+              </div>
+              {{ ui::error_notification() }}
+              <div class="field">
+                <div class="control">
+                  <button
+                    class="button is-primary is-fullwidth is-rounded"
+                    type="submit"
+                    :class="{'is-loading':loading}"
+                    :disabled="loading"
+                  >
+                    Create Account
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
         </div>
+        <p class="has-text-centered has-text-grey">
+          Already have an account?
+          <a href="/sign-in" class="has-text-primary"
+            ><strong>Sign in</strong></a
+          >
+        </p>
       </div>
-
-      <div class="field">
-        <label class="label" for="password">Password</label>
-        <div class="control">
-          <input
-            class="input"
-            type="password"
-            id="password"
-            x-model="password"
-            required
-          />
-        </div>
-      </div>
-
-      <div class="field">
-        <label class="label" for="password-confirm">Confirm Password</label>
-        <div class="control">
-          <input
-            class="input"
-            type="password"
-            id="password-confirm"
-            x-model="confirm"
-            required
-          />
-        </div>
-      </div>
-
-      <div class="field">
-        <div class="control">
-          <button class="button is-primary" type="submit">Sign Up</button>
-        </div>
-      </div>
-
-      <p x-show="error" class="has-text-danger" x-text="error"></p>
-    </form>
-
-    <p class="mt-4">
-      Already have an account?
-      <a href="/sign-in">Sign in</a>
-    </p>
+    </div>
   </div>
 </section>
-
-<footer class="footer">
-  <div class="content container is-max-desktop">
-    <p><a href="/">home</a></p>
-  </div>
-</footer>
 {% endblock body %}

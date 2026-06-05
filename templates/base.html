@@ -1,16 +1,78 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" x-data="theme()" :data-theme="dark ? 'dark' : 'light'">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <title>{% block title %}{{ site_title }}{% endblock title %}</title>
-
-    <link rel="stylesheet" href="{{ base_url }}/bulma-1.0.4/css/bulma.css" />
-    <script defer src="{{ base_url }}/alpine-3.15.8/cdn.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="{{ base_url }}/bulma-1.0.4/css/bulma.min.css"
+    />
     {% block head %}{% endblock head %}
   </head>
-  <body>
-    {% block body %}{% endblock body %}
+  <body class="is-flex is-flex-direction-column">
+    <main class="is-flex-grow-1">{% block body %}{% endblock body %}</main>
+
+    <footer class="footer">
+      <div class="container">
+        <div class="columns">
+          <div class="column is-half">
+            <p class="title is-5">{{ site_title }}</p>
+            <p class="has-text-grey">A rather humble documentation site</p>
+          </div>
+          <div class="column is-one-quarter">
+            <p class="has-text-weight-bold">Links</p>
+            <ul>
+              <li><a href="/" class="has-text-grey">Home</a></li>
+              {% if user %}
+              <li><a href="/edit" class="has-text-grey">New Page</a></li>
+              <li><a href="/upload" class="has-text-grey">Upload File</a></li>
+              <li><a href="/profile" class="has-text-grey">Profile</a></li>
+              <li><a href="/sign-out" class="has-text-grey">Sign Out</a></li>
+              {% else %}
+              <li><a href="/sign-in" class="has-text-grey">Sign In</a></li>
+              {% endif %}
+            </ul>
+          </div>
+        </div>
+        <hr />
+        <div class="level has-text-grey-light">
+          <div class="level-left">
+            <p>
+              © 2026 <a href="https://x.com/kemiamu">kemiamu 🥥</a> — licensed
+              <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/"
+                >CC BY-NC-SA 4.0</a
+              >
+            </p>
+          </div>
+          <div class="level-right">
+            <button
+              class="button"
+              x-on:click="toggle"
+              title="Toggle dark mode"
+              :class="dark ? 'is-light' : 'is-dark'"
+              x-text="dark ? 'Light Mode' : 'Dark Mode'"
+            ></button>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <script defer src="{{ base_url }}/alpine-3.15.8/cdn.min.js"></script>
+    <script>
+      function theme() {
+        return {
+          dark:
+            localStorage.getItem("theme") === "dark" ||
+            (!localStorage.getItem("theme") &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches),
+          toggle() {
+            this.dark = !this.dark;
+            localStorage.setItem("theme", this.dark ? "dark" : "light");
+          },
+        };
+      }
+    </script>
   </body>
 </html>

@@ -4,12 +4,14 @@ use axum::response::{IntoResponse, Response};
 
 type BoxErr = Box<dyn std::error::Error + Send + Sync>;
 
+/// application error with status and message
 pub struct AppError {
     status: StatusCode,
     inner: BoxErr,
 }
 
 impl std::fmt::Debug for AppError {
+    /// debug format for logging
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AppError")
             .field("status", &self.status)
@@ -19,6 +21,7 @@ impl std::fmt::Debug for AppError {
 }
 
 impl AppError {
+    /// create a new app error
     pub fn new(status: StatusCode, msg: impl Into<BoxErr>) -> Self {
         let inner = msg.into();
         Self { inner, status }
@@ -26,6 +29,7 @@ impl AppError {
 }
 
 impl IntoResponse for AppError {
+    /// render error as html response
     fn into_response(self) -> Response {
         tracing::error!("{:?}", self);
 

@@ -1,0 +1,17 @@
+{# ── Breadcrumb: Home > current page ── #} {% macro breadcrumb(current) %}
+<nav class="breadcrumb" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="/">Home</a></li>
+    <li class="is-active"><a href="#" aria-current="page">{{ current }}</a></li>
+  </ul>
+</nav>
+{% endmacro breadcrumb %} {# ── Error notification (Alpine: x-data must have
+`error`) ── #} {% macro error_notification() %}
+<div class="notification is-danger is-light" x-show="error" x-cloak>
+  <button class="delete" x-on:click="error=''"></button>
+  <p x-text="error"></p>
+</div>
+{% endmacro error_notification %} {# ── Back to Home link ── #} {% macro
+back_link() %}
+<a href="/" class="has-text-grey">&larr; Back to Home</a>
+{% endmacro back_link %}

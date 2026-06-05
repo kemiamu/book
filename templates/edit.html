@@ -1,61 +1,62 @@
-{% extends "base.html" %}
-<!---->
-{% block title %}{{ page_title }} - {{ site_title }}{% endblock title %}
-<!---->
-{% block head %}
+{% extends "base.html" %} {% import "macros.html" as ui %} {% block title %}Edit
+- {{ site_title }}{% endblock title %} {% block head %}
 <script>
-  function app() {
+  function editApp() {
     return {
       slug: {{ slug | json_encode | safe }},
       title: {{ title | json_encode | safe }},
       body: {{ body | json_encode | safe }},
       error: {{ error | json_encode | safe }},
-      loading: false,
+      loading: false, preview: false,
+      togglePreview() { this.preview = !this.preview; },
       async submit() {
-        this.error = "";
-        this.loading = true;
+        this.error = ""; this.loading = true;
         try {
-          const res = await fetch("/edit", {
+          const r = await fetch("/edit", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              slug: this.slug,
-              title: this.title,
-              body: this.body,
-            }),
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({slug:this.slug, title:this.title, body:this.body})
           });
-          if (res.ok) {
-            window.location.href = "/view/" + encodeURIComponent(this.slug);
-          } else {
-            const text = await res.text();
-            // Try to extract error message from HTML, fallback to status text
-            const match = text.match(/<p class="subtitle">([^<]+)<\/p>/);
-            this.error = match ? match[1] : res.statusText;
+          if (r.ok) { window.location.href = "/view/"+encodeURIComponent(this.slug); }
+          else {
+            const t = await r.text();
+            const m = t.match(/<p class="subtitle">([^<]+)<\/p>/);
+            this.error = m ? m[1] : r.statusText;
           }
-        } catch (e) {
-          this.error = "An error occurred";
-        } finally {
-          this.loading = false;
-        }
-      },
+        } catch(e) { this.error = "An error occurred"; }
+        finally { this.loading = false; }
+      }
     };
   }
 </script>
-{% endblock head %}
-<!---->
-{% block body %}
+{% endblock head %} {% block body %}
 <section class="section">
   <div class="container is-max-desktop">
-    <h1 class="title is-3">Edit</h1>
-
-    <form x-data="app()" x-on:submit.prevent="submit">
+    <h1 class="title is-4">
+      {% if slug | length > 0 %}Edit Page{% else %}New Page{% endif %}
+    </h1>
+    {{ ui::breadcrumb(current="Edit") }}
+  </div>
+</section>
+<section class="section">
+  <div class="container is-max-desktop">
+    <form x-data="editApp()" x-on:submit.prevent="submit">
       <div class="field">
         <label class="label" for="slug">Slug (URL name)</label>
         <div class="control">
-          <input class="input" type="text" id="slug" x-model="slug" required />
+          <input
+            class="input"
+            type="text"
+            id="slug"
+            x-model="slug"
+            required
+            placeholder="my-page-slug"
+          />
         </div>
+        <p class="help">
+          Used in URL: /view/<strong x-text="slug||'...'"></strong>
+        </p>
       </div>
-
       <div class="field">
         <label class="label" for="title">Title</label>
         <div class="control">
@@ -65,40 +66,57 @@
             id="title"
             x-model="title"
             required
+            placeholder="Page title"
           />
         </div>
       </div>
-
       <div class="field">
-        <label class="label" for="body">Body (Markdown)</label>
+        <div class="level">
+          <div class="level-left">
+            <label class="label" for="body">Body (Markdown)</label>
+          </div>
+          <div class="level-right">
+            <a
+              class="button is-small is-ghost"
+              x-on:click="togglePreview"
+              type="button"
+            >
+              <span x-text="preview?'Edit':'Preview'"></span>
+            </a>
+          </div>
+        </div>
         <div class="control">
           <textarea
             class="textarea"
             id="body"
             x-model="body"
             rows="20"
+            placeholder="Write content in Markdown..."
+            x-show="!preview"
           ></textarea>
+          <div class="box" x-show="preview" x-html="body"></div>
         </div>
       </div>
-
-      <div class="field">
-        <div class="control is-flex is-gap-2">
+      <div class="field is-grouped">
+        <div class="control">
           <button
             class="button is-primary"
             type="submit"
-            x-bind:disabled="loading"
+            :disabled="loading"
+            :class="{'is-loading':loading}"
           >
-            <span x-text="loading ? 'Saving...' : 'Save'"></span>
+            <span x-text="loading?'Saving...':'Save'"></span>
           </button>
+        </div>
+        <div class="control">
           <a
             class="button"
-            x-bind:href="slug ? '/view/' + encodeURIComponent(slug) : '/'"
+            x-bind:href="slug?'/view/'+encodeURIComponent(slug):'/'"
             >Cancel</a
           >
         </div>
       </div>
-
-      <p x-show="error" class="has-text-danger" x-text="error"></p>
+      {{ ui::error_notification() }}
     </form>
   </div>
 </section>

@@ -8,9 +8,11 @@ use axum_extra::extract::cookie::CookieJar;
 use redb::TableDefinition;
 use rkyv::{Archive, rancor};
 
+/// users table definition
 pub const USERS: TableDefinition<&str, User> = TableDefinition::new("users");
 
 #[derive(Archive, rkyv::Serialize, rkyv::Deserialize, Debug, Clone)]
+/// a registered user
 pub struct User {
     password: Mac,
     pub parent: String,
@@ -19,6 +21,7 @@ pub struct User {
 impl User {
     const PASSWD_TAG: &str = "password";
 
+    /// create a new user
     pub fn new(
         password: impl AsRef<[u8]>,
         secret: impl AsRef<[u8]>,
@@ -29,6 +32,7 @@ impl User {
         Self { password, parent }
     }
 
+    /// verify password against stored hash
     pub fn verify(&self, password: impl AsRef<[u8]>, secret: impl AsRef<[u8]>) -> bool {
         let expected = Mac::new(password, secret, Self::PASSWD_TAG);
         self.password == expected
@@ -38,6 +42,7 @@ impl User {
 // invite
 
 #[derive(Archive, rkyv::Serialize, rkyv::Deserialize, Debug, Clone)]
+/// sign-up invitation token
 pub struct Invitation {
     pub inviter: String,
     pub expires_at: i64,
@@ -46,6 +51,7 @@ pub struct Invitation {
 impl Invitation {
     pub const EXPIRY_SECS: i64 = 7 * 24 * 60 * 60;
 
+    /// create a new invitation
     pub fn new(inviter: impl Into<String>) -> Self {
         let now = time::UtcDateTime::now().unix_timestamp();
         Self {
@@ -56,15 +62,19 @@ impl Invitation {
 }
 
 impl Signable for Invitation {
+    /// invitation type tag
     fn tag() -> &'static str {
         "invitation"
     }
+    /// check if invitation is not expired
     fn is_valid(&self) -> bool {
         self.expires_at >= time::UtcDateTime::now().unix_timestamp()
     }
+    /// serialize invitation to bytes
     fn serialize(&self) -> Vec<u8> {
         rkyv::to_bytes::<rancor::Error>(self).unwrap().into_vec()
     }
+    /// deserialize invitation from bytes
     fn deserialize(bytes: &[u8]) -> Option<Self> {
         rkyv::from_bytes::<Invitation, rancor::Error>(bytes).ok()
     }
@@ -73,6 +83,7 @@ impl Signable for Invitation {
 // session
 
 #[derive(Archive, rkyv::Serialize, rkyv::Deserialize, Debug, Clone)]
+/// user session token
 pub struct Session {
     pub user: String,
     pub expires_at: i64,
@@ -81,6 +92,7 @@ pub struct Session {
 impl Session {
     pub const EXPIRY_SECS: i64 = 90 * 24 * 60 * 60;
 
+    /// create a new session
     pub fn new(user: impl Into<String>) -> Self {
         let now = time::UtcDateTime::now().unix_timestamp();
         Self {
@@ -91,15 +103,19 @@ impl Session {
 }
 
 impl Signable for Session {
+    /// session type tag
     fn tag() -> &'static str {
         "session"
     }
+    /// check if session is not expired
     fn is_valid(&self) -> bool {
         self.expires_at >= time::UtcDateTime::now().unix_timestamp()
     }
+    /// serialize session to bytes
     fn serialize(&self) -> Vec<u8> {
         rkyv::to_bytes::<rancor::Error>(self).unwrap().into_vec()
     }
+    /// deserialize session from bytes
     fn deserialize(bytes: &[u8]) -> Option<Self> {
         rkyv::from_bytes::<Session, rancor::Error>(bytes).ok()
     }
@@ -107,13 +123,14 @@ impl Signable for Session {
 
 // token
 
-/// Authenticated user extracted from session cookie.
+/// authenticated user extracted from session cookie
 #[derive(Debug)]
 pub struct UserToken(pub Result<String, AppError>);
 
 impl<S: Send + Sync + 'static> FromRequestParts<S> for UserToken {
     type Rejection = std::convert::Infallible;
 
+    /// extract user from session cookie
     async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
         let jar = CookieJar::from_request_parts(parts, &())
             .await

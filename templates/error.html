@@ -1,18 +1,15 @@
-{% extends "base.html" %}
-<!---->
-{% block title %}{{ code }} - {{ site_title }}{% endblock title %}
-<!---->
-{% block body %}
+{% extends "base.html" %} {% import "macros.html" as ui %} {% block title %}{{
+code }} - {{ site_title }}{% endblock title %} {% block body %}
 <section class="section">
-  <div class="container is-max-desktop">
-    <h1 class="title">{{ code }} {{ reason }}</h1>
-    <p class="subtitle">{{ message }}</p>
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-half has-text-centered">
+        <h1 class="title is-1">{{ code }}</h1>
+        <p class="subtitle is-4 has-text-grey">{{ reason }}</p>
+        <p class="has-text-grey">{{ message }}</p>
+        {{ ui::back_link() }}
+      </div>
+    </div>
   </div>
 </section>
-
-<footer class="footer">
-  <div class="content container is-max-desktop">
-    <p><a href="{{ base_url }}/">← home</a></p>
-  </div>
-</footer>
 {% endblock body %}

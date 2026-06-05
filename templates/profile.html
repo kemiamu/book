@@ -1,51 +1,66 @@
-{% extends "base.html" %}
-<!---->
-{% block title %}Profile - {{ site_title }}{% endblock title %}
-<!---->
-{% block body %}
-<section class="section" x-data="app()">
+{% extends "base.html" %} {% import "macros.html" as ui %} {% block title
+%}Profile - {{ site_title }}{% endblock title %} {% block body %}
+<section class="section">
   <div class="container is-max-desktop">
-    <h1 class="title is-3">Profile</h1>
-
-    <div class="box">
-      <h2 class="title is-5">Invite Code</h2>
-      <p class="mb-3">
-        Generate an invite code to share with others so they can sign up.
-      </p>
-
-      <div class="buttons mb-3">
-        <button
-          class="button is-primary"
-          x-on:click="generate"
-          :disabled="loading"
-          :class="{ 'is-loading': loading }"
-        >
-          Generate
-        </button>
-        <button class="button" x-on:click="copy" :disabled="!code">Copy</button>
+    <h1 class="title is-4">Profile</h1>
+    {{ ui::breadcrumb(current="Profile") }}
+  </div>
+</section>
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-half">
+        <div class="card" x-data="profileApp()">
+          <div class="card-content">
+            <h1 class="title is-4">Profile</h1>
+            <p class="subtitle is-6 has-text-grey">Manage your account</p>
+            <div class="box has-background-info-light">
+              <h2 class="title is-6">Invite Code</h2>
+              <p class="has-text-grey is-size-7">
+                Generate an invite code to share with others.
+              </p>
+              <div class="buttons">
+                <button
+                  class="button is-primary is-rounded"
+                  x-on:click="generate"
+                  :disabled="loading"
+                  :class="{'is-loading':loading}"
+                >
+                  <span x-text="loading?'Generating...':'Generate'"></span>
+                </button>
+                <button
+                  class="button is-rounded"
+                  x-on:click="copy"
+                  :disabled="!code"
+                >
+                  Copy
+                </button>
+              </div>
+              <div x-show="code" x-cloak>
+                <div
+                  class="box is-family-monospace is-size-7"
+                  x-text="code"
+                ></div>
+                <p class="is-size-7 has-text-success" x-show="copied" x-cloak>
+                  Copied to clipboard!
+                </p>
+              </div>
+              <p
+                x-show="error"
+                class="has-text-danger is-size-7"
+                x-text="error"
+                x-cloak
+              ></p>
+            </div>
+          </div>
+        </div>
+        {{ ui::back_link() }}
       </div>
-
-      <div
-        x-show="code"
-        class="notification is-info"
-        style="word-break: break-all"
-        x-text="code"
-      ></div>
-
-      <p x-show="error" class="has-text-danger" x-text="error"></p>
-      <p x-show="copied" class="has-text-success">Copied to clipboard!</p>
     </div>
   </div>
 </section>
-
-<footer class="footer">
-  <div class="content container is-max-desktop">
-    <p><a href="/">← home</a></p>
-  </div>
-</footer>
-
 <script>
-  function app() {
+  function profileApp() {
     return {
       code: "",
       error: "",
@@ -56,15 +71,13 @@
         this.copied = false;
         this.loading = true;
         try {
-          const res = await fetch("/profile/invite");
-          const data = await res.json();
-          if (res.ok) {
+          const r = await fetch("/profile/invite");
+          const d = await r.json();
+          if (r.ok)
             this.code =
               "{{ base_url | safe }}/sign-up?invite=" +
-              encodeURIComponent(data.code);
-          } else {
-            this.error = data.error || "Failed to generate invite code";
-          }
+              encodeURIComponent(d.code);
+          else this.error = d.error || "Failed to generate invite code";
         } catch (e) {
           this.error = "Network error";
         } finally {
@@ -75,9 +88,7 @@
         try {
           await navigator.clipboard.writeText(this.code);
           this.copied = true;
-        } catch {
-          // ignore
-        }
+        } catch {}
       },
     };
   }

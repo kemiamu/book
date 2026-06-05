@@ -4,6 +4,7 @@ mod tests {
     use crate::model::user::{USERS, User};
 
     #[test]
+    /// initialize db tables
     fn init_tables() {
         let db = redb::Database::create("data.redb").unwrap();
 
@@ -21,6 +22,7 @@ mod tests {
     }
 
     #[test]
+    /// create a test user
     fn init_user() {
         let mut args = std::env::args().skip_while(|a| a != "init_user");
         args.next();

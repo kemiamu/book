@@ -1,21 +1,23 @@
-{% extends "base.html" %}
-<!---->
-{% block title %}{{ page_title }}{% endblock title %}
-<!---->
-{% block body %}
+{% extends "base.html" %} {% import "macros.html" as ui %} {% block title %}{{
+page_title }} - {{ site_title }}{% endblock title %} {% block body %}
 <section class="section">
   <div class="container is-max-desktop">
-    <h1 class="title is-3">{{ page_title }}</h1>
-    <div class="content">{{ content | safe }}</div>
+    <div
+      class="is-flex is-justify-content-space-between is-align-items-flex-start"
+    >
+      <h1 class="title is-4">{{ page_title }}</h1>
+      {% if user %}
+      <a class="button" href="/edit?page={{ slug }}">Edit</a>
+      {% endif %}
+    </div>
+    {{ ui::breadcrumb(current=page_title) }}
   </div>
 </section>
-
-<footer class="footer">
-  <div class="content container is-max-desktop">
-    <p><a href="/">← home</a></p>
-    {% if user %}
-    <p><a href="/edit?page={{ slug }}">edit</a></p>
-    {% endif %}
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="content is-medium">{{ content | safe }}</div>
+    <hr />
+    {{ ui::back_link() }}
   </div>
-</footer>
+</section>
 {% endblock body %}

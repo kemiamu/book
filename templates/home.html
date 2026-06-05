@@ -1,52 +1,71 @@
-{% extends "base.html" %}
-<!---->
+{% extends "base.html" %} {% block title %}{{ site_title }}{% endblock title %}
 {% block body %}
-<section class="section">
-  <div class="container is-max-desktop">
-    <h1 class="title is-3">{{ site_title }}</h1>
-  </div>
-</section>
 
 <section class="section">
   <div class="container is-max-desktop">
-    <h2 class="title is-4">Pages</h2>
+    <div class="level is-mobile">
+      <div class="level-left"><h2 class="title is-4">Pages</h2></div>
+      <div class="level-right">
+        <span class="tag is-medium">{{ pages | length }}</span>
+      </div>
+    </div>
     {% if pages %}
-    <ul>
+    <div class="columns is-multiline">
       {% for p in pages %}
-      <li><a href="/view/{{ p.name }}">{{ p.title }}</a></li>
+      <div class="column is-half">
+        <a href="/view/{{ p.name }}" class="card">
+          <div class="card-content">
+            <p class="title is-5">{{ p.title }}</p>
+            <p class="subtitle is-6 has-text-grey">{{ p.date }}</p>
+          </div>
+        </a>
+      </div>
       {% endfor %}
-    </ul>
+    </div>
     {% else %}
-    <p class="has-text-grey">No pages yet</p>
+    <div class="has-text-centered">
+      <p class="has-text-grey">No pages yet</p>
+      {% if user %}
+      <a class="button is-primary is-small" href="/edit"
+        >Create your first page</a
+      >
+      {% endif %}
+    </div>
     {% endif %}
   </div>
 </section>
 
 <section class="section">
   <div class="container is-max-desktop">
-    <h2 class="title is-4">Files</h2>
+    <div class="level is-mobile">
+      <div class="level-left"><h2 class="title is-4">Files</h2></div>
+      <div class="level-right">
+        <span class="tag is-medium">{{ files | length }}</span>
+      </div>
+    </div>
     {% if files %}
-    <ul>
+    <div class="columns is-multiline">
       {% for f in files %}
-      <li><a href="/file/{{ f.name }}">{{ f.title }}</a></li>
+      <div class="column is-half">
+        <a href="/file/{{ f.name }}" class="card">
+          <div class="card-content">
+            <p class="title is-5">{{ f.title }}</p>
+            <p class="subtitle is-6 has-text-grey">{{ f.date }}</p>
+          </div>
+        </a>
+      </div>
       {% endfor %}
-    </ul>
+    </div>
     {% else %}
-    <p class="has-text-grey">No files yet</p>
+    <div class="has-text-centered">
+      <p class="has-text-grey">No files yet</p>
+      {% if user %}
+      <a class="button is-primary is-small" href="/upload"
+        >Upload your first file</a
+      >
+      {% endif %}
+    </div>
     {% endif %}
   </div>
 </section>
-
-<footer class="footer">
-  <div class="content container is-max-desktop">
-    {% if user %}
-    <p><a href="/sign-out">sign out @{{ user }}</a></p>
-    <p><a href="/edit">new page</a></p>
-    <p><a href="/profile">invite</a></p>
-    <p><a href="/upload">upload file</a></p>
-    {% else %}
-    <p><a href="/sign-in">sign in</a></p>
-    {% endif %}
-  </div>
-</footer>
 {% endblock body %}

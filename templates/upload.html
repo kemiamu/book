@@ -1,27 +1,21 @@
-{% extends "base.html" %}
-<!---->
-{% block title %}Upload File - {{ site_title }}{% endblock title %}
-<!---->
-{% block head %}
+{% extends "base.html" %} {% import "macros.html" as ui %} {% block title
+%}Upload File - {{ site_title }}{% endblock title %} {% block head %}
 <script>
-  function app() {
+  function uploadApp() {
     return {
       slug: "",
       title: "",
       file: null,
+      fileName: "",
       error: "",
       loading: false,
-      nameFromFile() {
-        const el = document.getElementById("file");
-        if (el.files.length > 0) {
-          const name = el.files[0].name;
-          if (!this._slugEdited) {
-            this.slug = name;
-          }
-          if (!this._titleEdited) {
-            this.title = name;
-          }
-        }
+      onFileSelect(e) {
+        const f = e.target.files[0];
+        if (!f) return;
+        this.file = f;
+        this.fileName = f.name;
+        if (!this._slugEdited) this.slug = f.name;
+        if (!this._titleEdited) this.title = f.name;
       },
       markSlugEdited() {
         this._slugEdited = true;
@@ -31,24 +25,21 @@
       },
       async submit() {
         this.error = "";
+        if (!this.file) {
+          this.error = "Please select a file";
+          return;
+        }
         this.loading = true;
         try {
-          const formData = new FormData();
-          formData.append("slug", this.slug);
-          formData.append("title", this.title);
-          if (this.file) {
-            formData.append("file", this.file);
-          }
-
-          const res = await fetch("/upload", {
-            method: "POST",
-            body: formData,
-          });
-          if (res.ok) {
-            window.location.href = "/";
-          } else {
-            const data = await res.json();
-            this.error = data.error || res.statusText;
+          const fd = new FormData();
+          fd.append("slug", this.slug);
+          fd.append("title", this.title);
+          fd.append("file", this.file);
+          const r = await fetch("/upload", { method: "POST", body: fd });
+          if (r.ok) window.location.href = "/";
+          else {
+            const d = await r.json();
+            this.error = d.error || r.statusText;
           }
         } catch (e) {
           this.error = "An error occurred";
@@ -59,27 +50,36 @@
     };
   }
 </script>
-{% endblock head %}
-<!---->
-{% block body %}
+{% endblock head %} {% block body %}
 <section class="section">
   <div class="container is-max-desktop">
-    <h1 class="title is-3">Upload File</h1>
-
-    <form x-data="app()" x-on:submit.prevent="submit">
+    <h1 class="title is-4">Upload File</h1>
+    {{ ui::breadcrumb(current="Upload File") }}
+  </div>
+</section>
+<section class="section">
+  <div class="container is-max-desktop">
+    <form x-data="uploadApp()" x-on:submit.prevent="submit">
       <div class="field">
-        <label class="label" for="file">File</label>
-        <div class="control">
-          <input
-            class="input"
-            type="file"
-            id="file"
-            x-on:change="file = $event.target.files[0]; nameFromFile()"
-            required
-          />
+        <label class="label">File</label>
+        <div class="file is-boxed is-fullwidth">
+          <label class="file-label">
+            <input
+              class="file-input"
+              type="file"
+              x-on:change="onFileSelect"
+              x-ref="fileInput"
+            />
+            <span class="file-cta">
+              <span class="file-icon">📁</span>
+              <span
+                class="file-label"
+                x-text="fileName || 'Choose a file...'"
+              ></span>
+            </span>
+          </label>
         </div>
       </div>
-
       <div class="field">
         <label class="label" for="title">Title</label>
         <div class="control">
@@ -90,12 +90,12 @@
             x-model="title"
             x-on:input="markTitleEdited"
             required
+            placeholder="Display title"
           />
         </div>
       </div>
-
       <div class="field">
-        <label class="label" for="slug">Slug (URL name for download)</label>
+        <label class="label" for="slug">Slug (URL name)</label>
         <div class="control">
           <input
             class="input"
@@ -104,24 +104,29 @@
             x-model="slug"
             x-on:input="markSlugEdited"
             required
+            placeholder="my-file-name"
           />
         </div>
+        <p class="help">
+          Download URL: /file/<strong x-text="slug||'...'"></strong>
+        </p>
       </div>
-
-      <div class="field">
-        <div class="control is-flex is-gap-2">
+      <div class="field is-grouped">
+        <div class="control">
           <button
             class="button is-primary"
             type="submit"
-            x-bind:disabled="loading"
+            :disabled="loading"
+            :class="{'is-loading':loading}"
           >
-            <span x-text="loading ? 'Uploading...' : 'Upload'"></span>
+            <span x-text="loading?'Uploading...':'Upload'"></span>
           </button>
+        </div>
+        <div class="control">
           <a class="button" href="/">Cancel</a>
         </div>
       </div>
-
-      <p x-show="error" class="has-text-danger" x-text="error"></p>
+      {{ ui::error_notification() }}
     </form>
   </div>
 </section>

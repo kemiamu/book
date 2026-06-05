@@ -8,6 +8,7 @@ use tokio::net::TcpListener;
 use tower_http::{compression::CompressionLayer, services::ServeDir};
 mod routes;
 
+/// entry point
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt().init();
