@@ -37,7 +37,7 @@ impl IntoResponse for AppError {
             .insert("code", &self.status.as_u16())
             .insert("reason", &self.status.canonical_reason().unwrap_or("Error"))
             .insert("message", &self.inner.to_string())
-            .render("error.html")
+            .render("error.tera")
             .unwrap();
         (self.status, html).into_response()
     }

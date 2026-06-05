@@ -80,7 +80,7 @@ pub async fn home_page(
         .insert("pages", &pages)
         .insert("files", &files)
         .insert("user", &user);
-    Ok(Html(page.render("home.html")?))
+    Ok(Html(page.render("home.tera")?))
 }
 
 // view
@@ -121,7 +121,7 @@ pub async fn view_page(
         .insert("content", &body.value().render())
         .insert("user", &user)
         .insert("slug", &slug);
-    Ok(Html(page.render("view.html")?))
+    Ok(Html(page.render("view.tera")?))
 }
 
 // profile
@@ -131,7 +131,7 @@ pub async fn profile_page(
     book::model::user::UserToken(_token): book::model::user::UserToken,
 ) -> Result<Html<String>, AppError> {
     let page = PageContext::new().insert("page_title", "Profile");
-    Ok(Html(page.render("profile.html")?))
+    Ok(Html(page.render("profile.tera")?))
 }
 
 /// generate an invite code

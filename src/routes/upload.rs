@@ -12,7 +12,7 @@ use std::sync::Arc;
 /// show file upload page
 pub async fn file_upload_page(_token: UserToken) -> Result<Html<String>, AppError> {
     let page = PageContext::new().insert("page_title", "Upload File");
-    Ok(Html(page.render("upload.html")?))
+    Ok(Html(page.render("upload.tera")?))
 }
 
 /// handle file upload

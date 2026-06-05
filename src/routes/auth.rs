@@ -16,7 +16,7 @@ use std::collections::HashMap;
 /// show sign-in page
 pub async fn sign_in_page() -> Result<Html<String>, AppError> {
     let page = PageContext::new().insert("page_title", "Sign In");
-    Ok(Html(page.render("sign-in.html")?))
+    Ok(Html(page.render("sign-in.tera")?))
 }
 
 #[derive(Deserialize)]
@@ -63,7 +63,7 @@ pub async fn sign_up_page(
     let page = PageContext::new()
         .insert("page_title", "Sign Up")
         .insert("invite", &invite);
-    Ok(Html(page.render("sign-up.html")?))
+    Ok(Html(page.render("sign-up.tera")?))
 }
 
 #[derive(Deserialize)]

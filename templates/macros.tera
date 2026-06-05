@@ -6,7 +6,7 @@
   </ul>
 </nav>
 {% endmacro breadcrumb %}
-<!-- -->
+
 {% macro section_header(title, current) %}
 <section class="section">
   <div class="container is-max-desktop">
@@ -15,20 +15,20 @@
   </div>
 </section>
 {% endmacro section_header %}
-<!-- -->
+
 {% macro error_notification() %}
 <div class="notification is-danger is-light" x-show="error" x-cloak>
   <button class="delete" x-on:click="error=''"></button>
   <p x-text="error"></p>
 </div>
 {% endmacro error_notification %}
-<!-- -->
+
 {% macro back_link() %}
 <a href="/" class="has-text-grey">&larr; Back to Home</a>
 {% endmacro back_link %}
-<!-- -->
-{% macro input(label, id, model, required, placeholder, type="text",
-autocomplete="", extra_attr="") %}
+
+{% macro input(label, id, model, required, placeholder,
+type="text", autocomplete="", extra_attr="") %}
 <div class="field">
   <label class="label" for="{{ id }}">{{ label }}</label>
   <div class="control">
@@ -61,7 +61,7 @@ autocomplete="", extra_attr="") %}
   </div>
 </div>
 {% endmacro input %}
-<!-- -->
+
 {% macro textarea(label, id, model, rows, placeholder) %}
 <div class="field">
   <label class="label" for="{{ id }}">{{ label }}</label>
@@ -76,8 +76,9 @@ autocomplete="", extra_attr="") %}
   </div>
 </div>
 {% endmacro textarea %}
-<!-- -->
-{% macro button_group(submit_text, loading_text, cancel_url) %}
+
+{% macro button_group(submit_text, loading_text,
+cancel_url) %}
 <div class="field is-grouped">
   <div class="control">
     <button
@@ -94,8 +95,9 @@ autocomplete="", extra_attr="") %}
   </div>
 </div>
 {% endmacro button_group %}
-<!-- -->
-{% macro card_grid(items, type) %} {% if items %}
+
+{% macro card_grid(items, type) %}
+{% if items %}
 <div class="columns is-multiline">
   {% for item in items %}
   <div class="column is-half">
@@ -115,8 +117,9 @@ autocomplete="", extra_attr="") %}
 <div class="has-text-centered">
   <p class="has-text-grey">No {{ type }}s yet</p>
 </div>
-{% endif %} {% endmacro card_grid %}
-<!-- -->
+{% endif %}
+{% endmacro card_grid %}
+
 {% macro listing(title, items, type) %}
 <section class="section">
   <div class="container is-max-desktop">
@@ -130,7 +133,7 @@ autocomplete="", extra_attr="") %}
   </div>
 </section>
 {% endmacro listing %}
-<!-- -->
+
 {% macro page_header(title, current, show_edit) %}
 <section class="section">
   <div class="container is-max-desktop">

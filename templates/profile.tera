@@ -1,13 +1,9 @@
-{% extends "base.html" %}
-<!-- -->
+{% extends "base.tera" %}
 {% block title %}Profile - {{ site_title }}{% endblock title %}
-<!-- -->
 {% block head %}
 <script defer src="{{ base_url }}/js/profile.js"></script>
 {% endblock head %}
-<!-- -->
 {% block body %}
-<!-- -->
 {{ ui::section_header(title="Profile", current="Profile") }}
 <section class="section">
   <div class="container is-max-desktop">
