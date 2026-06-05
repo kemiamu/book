@@ -1,4 +1,5 @@
-{% extends "base.tera" %}
+{% import "macros/_listing.tera" as listing %}
+{% extends "_base.tera" %}
 {% block title %}{{ site_title }}{% endblock title %}
 {% block body %}
 <section class="hero">
@@ -11,6 +12,6 @@
     </div>
   </div>
 </section>
-{{ ui::listing(title="Pages", items=pages, type="view") }}
-{{ ui::listing(title="Files", items=files, type="file") }}
+{{ listing::listing(title="Pages", items=pages, type="view") }}
+{{ listing::listing(title="Files", items=files, type="file") }}
 {% endblock body %}

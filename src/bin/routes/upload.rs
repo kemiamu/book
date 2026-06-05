@@ -2,16 +2,25 @@ use axum::Json;
 use axum::extract::{Multipart, State};
 use axum::http::StatusCode;
 use axum::response::Html;
+use axum_extra::extract::cookie::CookieJar;
+use book::CONFIG;
+use book::crypto::Signed;
 use book::model::res::{FILE_BLOBS, FILES, FileBlob, ResourceMeta};
-use book::model::user::UserToken;
+use book::model::user::{Session, UserToken};
 use book::model::{AppState, PageContext, error::AppError};
 use redb::ReadableTable;
 use std::collections::HashSet;
 use std::sync::Arc;
 
 /// show file upload page
-pub async fn file_upload_page(_token: UserToken) -> Result<Html<String>, AppError> {
-    let page = PageContext::new().insert("page_title", "Upload File");
+pub async fn file_upload_page(_token: UserToken, jar: CookieJar) -> Result<Html<String>, AppError> {
+    let user = jar
+        .get("session")
+        .and_then(|c| Signed::<Session>::parse(c.value(), &CONFIG.secret))
+        .map(|s| s.inner.user);
+    let page = PageContext::new()
+        .insert("page_title", "Upload File")
+        .insert("user", &user);
     Ok(Html(page.render("upload.tera")?))
 }
 

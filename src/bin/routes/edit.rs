@@ -2,8 +2,11 @@ use axum::Json;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::Html;
+use axum_extra::extract::cookie::CookieJar;
+use book::CONFIG;
+use book::crypto::Signed;
 use book::model::res::{Markdown, PAGE_BODIES, PAGES, ResourceMeta};
-use book::model::user::UserToken;
+use book::model::user::{Session, UserToken};
 use book::model::{AppState, PageContext, error::AppError};
 use redb::{ReadableDatabase, ReadableTable};
 use serde::Deserialize;
@@ -18,6 +21,7 @@ pub struct EditQuery {
 
 /// show edit page
 pub async fn edit_page(
+    jar: CookieJar,
     _token: UserToken,
     State(state): State<Arc<AppState>>,
     Query(params): Query<EditQuery>,
@@ -50,12 +54,17 @@ pub async fn edit_page(
         (String::new(), String::new(), String::new())
     };
 
+    let user = jar
+        .get("session")
+        .and_then(|c| Signed::<Session>::parse(c.value(), &CONFIG.secret))
+        .map(|s| s.inner.user);
     let page = PageContext::new()
         .insert("page_title", "Edit")
         .insert("slug", &slug)
         .insert("title", &title)
         .insert("body", &body)
-        .insert("error", "");
+        .insert("error", "")
+        .insert("user", &user);
     Ok(Html(page.render("edit.tera")?))
 }
 

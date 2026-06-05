@@ -1,16 +1,14 @@
-{% extends "base.tera" %}
+{% import "macros/_form.tera" as form %}
+{% import "macros/_notification.tera" as notify %}
+{% extends "_base.tera" %}
 {% block title %}Edit - {{ site_title }}{% endblock title %}
 {% block head %}
 <script defer src="{{ base_url }}/js/edit.js"></script>
 {% endblock head %}
 {% block body %}
-{% if slug | length > 0 %}
-{{ ui::section_header(title='Edit Page', current='Edit') }}
-{% else %}
-{{ ui::section_header(title='New Page', current='Edit') }}
-{% endif %}
 <section class="section">
   <div class="container is-max-desktop">
+    <h1 class="title is-4">{% if slug | length > 0 %}Edit Page{% else %}New Page{% endif %}</h1>
     <form
       x-data="editApp()"
       x-on:submit.prevent="submit"
@@ -35,18 +33,15 @@
           Used in URL: /view/<strong x-text="slug||'...'"></strong>
         </p>
       </div>
-      {{ ui::input(label="Title", id="title", model="title", required=true,
-      placeholder="Page title") }}
-      {{ ui::textarea(label="Body (Markdown)", id="body", model="body", rows=20,
-      placeholder="Write content in Markdown...") }}
+      {{ form::input(label="Title", id="title", model="title", required=true, placeholder="Page title") }}
+      {{ form::textarea(label="Body (Markdown)", id="body", model="body", rows=20, placeholder="Write content in Markdown...") }}
       {% if slug | length > 0 %}
-      {% set cancel_url = "/view/" ~ slug %}
+        {% set cancel_url = "/view/" ~ slug %}
       {% else %}
-      {% set cancel_url = "/" %}
+        {% set cancel_url = "/" %}
       {% endif %}
-      {{ ui::button_group(submit_text="Save", loading_text="Saving...",
-      cancel_url=cancel_url) }}
-      {{ ui::error_notification() }}
+      {{ form::button_group(submit_text="Save", loading_text="Saving...", cancel_url=cancel_url) }}
+      {{ notify::error_notification() }}
     </form>
   </div>
 </section>

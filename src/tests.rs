@@ -1,49 +1,78 @@
-#[cfg(test)]
-mod tests {
-    use crate::model::res::{FILE_BLOBS, FILES, PAGE_BODIES, PAGES};
-    use crate::model::user::{USERS, User};
+use crate::crypto::{Signable, Signed};
+use std::collections::HashSet;
 
-    // rm data.redb && cargo test init_tables && cargo test init_user -- <username> <password>
+#[test]
+fn resource_meta_basics() {
+    let mut tags = HashSet::new();
+    tags.insert("rust".to_string());
 
-    #[test]
-    /// initialize db tables
-    fn init_tables() {
-        let db = redb::Database::create("data.redb").unwrap();
+    let meta = crate::model::res::ResourceMeta::new("Hello", "alice", tags);
 
-        let tx = db.begin_write().unwrap();
-        {
-            tx.open_table(PAGES).unwrap();
-            tx.open_table(PAGE_BODIES).unwrap();
-            tx.open_table(FILES).unwrap();
-            tx.open_table(FILE_BLOBS).unwrap();
-            tx.open_table(USERS).unwrap();
-        }
-        tx.commit().unwrap();
+    assert_eq!(meta.title, "Hello");
+    assert_eq!(meta.creator, "alice");
+    assert!(meta.tags.contains("rust"));
+    assert!(meta.date > 0);
+}
 
-        println!("tables initialized");
-    }
+#[test]
+fn markdown_renders_html() {
+    let md = crate::model::res::Markdown("# Title".to_string());
+    let html = md.render();
+    assert!(html.contains("<h1>"));
+    assert!(html.contains("Title"));
+}
 
-    #[test]
-    /// create a test user
-    fn init_user() {
-        let mut args = std::env::args().skip_while(|a| a != "init_user");
-        args.next();
+#[test]
+fn user_password_verify() {
+    let user = crate::model::user::User::new("mypass", "mysecret", "admin");
+    assert!(user.verify("mypass", "mysecret"));
+    assert!(!user.verify("wrong", "mysecret"));
+    assert!(!user.verify("mypass", "wrong"));
+}
 
-        let (username, password) = match (args.next(), args.next()) {
-            (Some(u), Some(p)) => (u, p),
-            _ => panic!("usage: cargo test init_user -- <username> <password>"),
-        };
+#[test]
+fn session_expiry() {
+    let s = crate::model::user::Session::new("alice");
+    assert_eq!(s.user, "alice");
+    assert!(s.expires_at > time::UtcDateTime::now().unix_timestamp());
+    assert!(s.is_valid());
+}
 
-        let db = redb::Database::create("data.redb").unwrap();
+#[test]
+fn invitation_roundtrip() {
+    let inv = crate::model::user::Invitation::new("alice");
+    let bytes = inv.serialize();
+    let restored = crate::model::user::Invitation::deserialize(&bytes).unwrap();
+    assert_eq!(restored.inviter, "alice");
+    assert_eq!(restored.expires_at, inv.expires_at);
+}
 
-        let tx = db.begin_write().unwrap();
-        {
-            let mut users = tx.open_table(USERS).unwrap();
-            let user = User::new(&password, &crate::CONFIG.secret, &username);
-            users.insert(username.as_str(), user).unwrap();
-        }
-        tx.commit().unwrap();
+#[test]
+fn signed_generate_and_parse() {
+    let inv = crate::model::user::Invitation::new("bob");
+    let secret = "test-secret";
 
-        println!("user created: {username}");
-    }
+    let signed = Signed::new(inv);
+    let token = signed.generate(secret);
+
+    let parsed = Signed::<crate::model::user::Invitation>::parse(&token, secret);
+    assert!(parsed.is_some());
+    assert_eq!(parsed.unwrap().inner.inviter, "bob");
+}
+
+#[test]
+fn signed_tampered_token_fails() {
+    let inv = crate::model::user::Invitation::new("bob");
+    let secret = "test-secret";
+
+    let signed = Signed::new(inv);
+    let token = signed.generate(secret);
+
+    let (data_hex, sig_hex) = token.rsplit_once('.').unwrap();
+    let mut sig_bytes = hex::decode(sig_hex).unwrap();
+    sig_bytes[0] ^= 0x01;
+    let tampered = format!("{}.{}", data_hex, hex::encode(sig_bytes));
+
+    let parsed = Signed::<crate::model::user::Invitation>::parse(&tampered, secret);
+    assert!(parsed.is_none());
 }

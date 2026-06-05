@@ -1,0 +1,50 @@
+{% macro input(label, id, model, required, placeholder, type="text", autocomplete="", extra_attr="") %}
+<div class="field">
+  <label class="label" for="{{ id }}">{{ label }}</label>
+  <div class="control">
+    <input
+      class="input"
+      type="{{ type }}"
+      id="{{ id }}"
+      x-model="{{ model }}"
+      {% if required %}required{% endif %}
+      placeholder="{{ placeholder }}"
+      {% if autocomplete %}autocomplete="{{ autocomplete }}"{% endif %}
+      {{ extra_attr | default(value="") }}
+    />
+  </div>
+</div>
+{% endmacro input %}
+
+{% macro textarea(label, id, model, rows, placeholder) %}
+<div class="field">
+  <label class="label" for="{{ id }}">{{ label }}</label>
+  <div class="control">
+    <textarea
+      class="textarea"
+      id="{{ id }}"
+      x-model="{{ model }}"
+      rows="{{ rows }}"
+      placeholder="{{ placeholder }}"
+    ></textarea>
+  </div>
+</div>
+{% endmacro textarea %}
+
+{% macro button_group(submit_text, loading_text, cancel_url) %}
+<div class="field is-grouped">
+  <div class="control">
+    <button
+      class="button is-primary"
+      type="submit"
+      :disabled="loading"
+      :class="{'is-loading':loading}"
+    >
+      <span x-text="loading?'{{ loading_text }}':'{{ submit_text }}'"></span>
+    </button>
+  </div>
+  <div class="control">
+    <a class="button" href="{{ cancel_url }}">Cancel</a>
+  </div>
+</div>
+{% endmacro button_group %}

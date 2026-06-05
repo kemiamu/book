@@ -1,0 +1,35 @@
+{% macro breadcrumb(current) %}
+<nav class="breadcrumb" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="/">Home</a></li>
+    <li class="is-active"><a href="#" aria-current="page">{{ current }}</a></li>
+  </ul>
+</nav>
+{% endmacro breadcrumb %}
+
+{% macro section_header(title, current) %}
+<section class="section">
+  <div class="container is-max-desktop">
+    <h1 class="title is-4">{{ title }}</h1>
+    {{ self::breadcrumb(current=current) }}
+  </div>
+</section>
+{% endmacro section_header %}
+
+{% macro back_link() %}
+<a href="/" class="has-text-grey">&larr; Back to Home</a>
+{% endmacro back_link %}
+
+{% macro page_header(title, current, show_edit) %}
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="is-flex is-justify-content-space-between is-align-items-flex-start">
+      <h1 class="title is-4">{{ title }}</h1>
+      {% if show_edit and user %}
+      <a class="button" href="/edit?page={{ current }}">Edit</a>
+      {% endif %}
+    </div>
+    {{ self::breadcrumb(current=title) }}
+  </div>
+</section>
+{% endmacro page_header %}

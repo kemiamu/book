@@ -1,4 +1,6 @@
-{% extends "base.tera" %}
+{% import "macros/_form.tera" as form %}
+{% import "macros/_notification.tera" as notify %}
+{% extends "_base.tera" %}
 {% block title %}Sign Up - {{ site_title }}{% endblock title %}
 {% block head %}
 <script defer src="{{ base_url }}/js/sign-up.js"></script>
@@ -19,18 +21,11 @@
               x-on:submit.prevent="submit"
               data-invite='{{ invite | default(value="") | json_encode | safe }}'
             >
-              {{ ui::input(label="Invite Code", id="invite", model="invite",
-              required=true, placeholder="Paste invite code") }}
-              {{ ui::input(label="Username", id="username", model="username",
-              required=true, placeholder="Choose a username",
-              autocomplete="username") }}
-              {{ ui::input(label="Password", id="password", model="password",
-              required=true, placeholder="At least 6 characters", type="password",
-              autocomplete="new-password") }}
-              {{ ui::input(label="Confirm Password", id="password-confirm",
-              model="confirm", required=true, placeholder="Repeat password",
-              type="password", autocomplete="new-password") }}
-              {{ ui::error_notification() }}
+              {{ form::input(label="Invite Code", id="invite", model="invite", required=true, placeholder="Paste invite code") }}
+              {{ form::input(label="Username", id="username", model="username", required=true, placeholder="Choose a username", autocomplete="username") }}
+              {{ form::input(label="Password", id="password", model="password", required=true, placeholder="At least 6 characters", type="password", autocomplete="new-password") }}
+              {{ form::input(label="Confirm Password", id="password-confirm", model="confirm", required=true, placeholder="Repeat password", type="password", autocomplete="new-password") }}
+              {{ notify::error_notification() }}
               <div class="field">
                 <div class="control">
                   <button
@@ -48,9 +43,7 @@
         </div>
         <p class="has-text-centered has-text-grey">
           Already have an account?
-          <a href="/sign-in" class="has-text-primary"
-            ><strong>Sign in</strong></a
-          >
+          <a href="/sign-in" class="has-text-primary"><strong>Sign in</strong></a>
         </p>
       </div>
     </div>

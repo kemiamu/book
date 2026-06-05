@@ -1,4 +1,5 @@
-{% extends "base.tera" %}
+{% import "macros/_nav.tera" as nav %}
+{% extends "_base.tera" %}
 {% block title %}{{ code }} - {{ site_title }}{% endblock title %}
 {% block body %}
 <section class="section">
@@ -8,7 +9,7 @@
         <h1 class="title is-1">{{ code }}</h1>
         <p class="subtitle is-4 has-text-grey">{{ reason }}</p>
         <p class="has-text-grey">{{ message }}</p>
-        {{ ui::back_link() }}
+        {{ nav::back_link() }}
       </div>
     </div>
   </div>

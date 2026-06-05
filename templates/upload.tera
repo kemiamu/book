@@ -1,16 +1,18 @@
-{% extends "base.tera" %}
+{% import "macros/_form.tera" as form %}
+{% import "macros/_notification.tera" as notify %}
+{% extends "_base.tera" %}
 {% block title %}Upload File - {{ site_title }}{% endblock title %}
 {% block head %}
 <script defer src="{{ base_url }}/js/upload.js"></script>
 {% endblock head %}
 {% block body %}
-{{ ui::section_header(title="Upload File", current="Upload File") }}
 <section class="section">
   <div class="container is-max-desktop">
+    <h1 class="title is-4">Upload File</h1>
     <form x-data="uploadApp()" x-on:submit.prevent="submit">
       <div class="field">
         <label class="label">File</label>
-        <div class="file is-boxed is-fullwidth">
+        <div class="file has-name is-fullwidth">
           <label class="file-label">
             <input
               class="file-input"
@@ -18,15 +20,14 @@
               x-on:change="onFileSelect"
               x-ref="fileInput"
             />
-            <span
-              class="file-name"
-              x-text="fileName || 'Choose a file...'"
-            ></span>
+            <span class="file-cta">
+              <span class="file-label">Choose a file…</span>
+            </span>
+            <span class="file-name" x-text="fileName || ''"></span>
           </label>
         </div>
       </div>
-      {{ ui::input(label="Title", id="title", model="title", required=true,
-      placeholder="Display title", extra_attr='x-on:input="markTitleEdited"') }}
+      {{ form::input(label="Title", id="title", model="title", required=true, placeholder="Display title", extra_attr='x-on:input="markTitleEdited"') }}
       <div class="field">
         <label class="label" for="slug">Slug (URL name)</label>
         <div class="control">
@@ -44,9 +45,8 @@
           Download URL: /file/<strong x-text="slug||'...'"></strong>
         </p>
       </div>
-      {{ ui::button_group(submit_text="Upload", loading_text="Uploading...",
-      cancel_url="/") }}
-      {{ ui::error_notification() }}
+      {{ form::button_group(submit_text="Upload", loading_text="Uploading...", cancel_url="/") }}
+      {{ notify::error_notification() }}
     </form>
   </div>
 </section>

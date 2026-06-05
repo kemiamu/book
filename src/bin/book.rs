@@ -2,11 +2,11 @@ use axum::Router;
 use axum::routing::{get, post};
 use book::CONFIG;
 use book::model::AppState;
+mod routes;
 use redb::Database;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tower_http::{compression::CompressionLayer, services::ServeDir};
-mod routes;
 
 /// entry point
 #[tokio::main]

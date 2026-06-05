@@ -128,9 +128,16 @@ pub async fn view_page(
 
 /// show profile page
 pub async fn profile_page(
+    jar: CookieJar,
     book::model::user::UserToken(_token): book::model::user::UserToken,
 ) -> Result<Html<String>, AppError> {
-    let page = PageContext::new().insert("page_title", "Profile");
+    let user = jar
+        .get("session")
+        .and_then(|c| Signed::<Session>::parse(c.value(), &CONFIG.secret))
+        .map(|s| s.inner.user);
+    let page = PageContext::new()
+        .insert("page_title", "Profile")
+        .insert("user", &user);
     Ok(Html(page.render("profile.tera")?))
 }
 

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en" x-data="theme()" :data-theme="dark ? 'dark' : 'light'">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>{% block title %}{{ site_title }}{% endblock title %}</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/bulma/1.0.4/css/bulma.min.css"
+    />
+    {% block head %}{% endblock head %}
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.15.8/dist/cdn.min.js"
+    ></script>
+    <script>
+      function theme() {
+        const mq = window.matchMedia("(prefers-color-scheme: dark)");
+        return {
+          dark: mq.matches,
+          init() {
+            mq.addEventListener("change", (e) => {
+              this.dark = e.matches;
+            });
+          },
+        };
+      }
+    </script>
+  </head>
+  <body class="is-flex is-flex-direction-column">
+    <main class="is-flex-grow-1">{% block body %}{% endblock body %}</main>
+
+    {% include "_footer.tera" %}
+  </body>
+</html>
