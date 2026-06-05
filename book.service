@@ -1,0 +1,17 @@
+[Unit]
+Description=book — a minimal wiki-like CMS
+Documentation=https://github.com/kemiamu/book
+After=network.target
+
+[Service]
+Type=simple
+User=book
+Group=book
+WorkingDirectory=/srv/book
+ExecStart=/usr/local/bin/book
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
