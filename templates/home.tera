@@ -6,8 +6,8 @@
   <div class="hero-body">
     <div class="container is-max-desktop">
       <p class="title is-3">{{ site_title }}</p>
-      <p class="subtitle is-6 has-text-grey">
-        A rather humble documentation site
+      <p class="subtitle is-5 has-text-grey">
+        A rather humble documentation site.
       </p>
     </div>
   </div>

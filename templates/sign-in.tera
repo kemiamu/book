@@ -3,16 +3,48 @@
 {% extends "_base.tera" %}
 {% block title %}Sign In - {{ site_title }}{% endblock title %}
 {% block head %}
-<script defer src="{{ base_url }}/js/sign-in.js"></script>
+<script defer>
+function signInApp() {
+  return {
+    username: "",
+    password: "",
+    error: "",
+    loading: false,
+    async submit() {
+      this.error = "";
+      this.loading = true;
+      try {
+        const r = await fetch("/sign-in", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: this.username,
+            password: this.password,
+          }),
+        });
+        if (r.ok) {
+          window.location.href = "/";
+        } else {
+          const d = await r.json();
+          this.error = d.error;
+        }
+      } catch (e) {
+        this.error = "Network error";
+      } finally {
+        this.loading = false;
+      }
+    },
+  };
+}
+</script>
 {% endblock head %}
 {% block body %}
 <section class="section">
   <div class="container">
     <div class="columns is-centered">
       <div class="column is-half">
-        <div class="has-text-centered">
+        <div class="block has-text-centered">
           <h1 class="title is-4">Welcome back</h1>
-          <p class="has-text-grey">Sign in to your account</p>
         </div>
         <div class="card">
           <div class="card-content">
@@ -23,7 +55,7 @@
               <div class="field">
                 <div class="control">
                   <button
-                    class="button is-primary is-fullwidth is-rounded"
+                    class="button is-primary is-fullwidth"
                     type="submit"
                     :class="{'is-loading':loading}"
                     :disabled="loading"
@@ -35,10 +67,7 @@
             </form>
           </div>
         </div>
-        <p class="has-text-centered has-text-grey">
-          Don't have an account?
-          <a href="/sign-up" class="has-text-primary"><strong>Sign up</strong></a>
-        </p>
+
       </div>
     </div>
   </div>

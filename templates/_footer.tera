@@ -3,7 +3,7 @@
     <div class="columns">
       <div class="column is-7">
         <p class="title is-5">{{ site_title }}</p>
-        <p class="has-text-grey">A rather humble documentation site</p>
+        <p class="has-text-grey">A rather humble documentation site.</p>
       </div>
       <div class="column is-5">
         <p class="title is-6">Links</p>

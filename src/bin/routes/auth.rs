@@ -14,8 +14,15 @@ use serde::Deserialize;
 use std::collections::HashMap;
 
 /// show sign-in page
-pub async fn sign_in_page() -> Result<Html<String>, AppError> {
-    let page = PageContext::new().insert("page_title", "Sign In");
+pub async fn sign_in_page(jar: CookieJar) -> Result<Html<String>, AppError> {
+    let user = jar
+        .get("session")
+        .and_then(|c| Signed::<Session>::parse(c.value(), &CONFIG.secret))
+        .map(|s| s.inner.user);
+
+    let page = PageContext::new()
+        .insert("page_title", "Sign In")
+        .insert("user", &user);
     Ok(Html(page.render("sign-in.tera")?))
 }
 
@@ -56,13 +63,20 @@ pub async fn sign_in_post(
 
 /// show sign-up page
 pub async fn sign_up_page(
+    jar: CookieJar,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Html<String>, AppError> {
+    let user = jar
+        .get("session")
+        .and_then(|c| Signed::<Session>::parse(c.value(), &CONFIG.secret))
+        .map(|s| s.inner.user);
+
     let invite = params.get("invite").cloned();
 
     let page = PageContext::new()
         .insert("page_title", "Sign Up")
-        .insert("invite", &invite);
+        .insert("invite", &invite)
+        .insert("user", &user);
     Ok(Html(page.render("sign-up.tera")?))
 }
 

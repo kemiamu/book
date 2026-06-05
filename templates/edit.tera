@@ -3,7 +3,54 @@
 {% extends "_base.tera" %}
 {% block title %}Edit - {{ site_title }}{% endblock title %}
 {% block head %}
-<script defer src="{{ base_url }}/js/edit.js"></script>
+<script defer>
+function editApp() {
+  return {
+    slug: "",
+    title: "",
+    body: "",
+    error: "",
+    loading: false,
+    preview: false,
+    init() {
+      const el = this.$el;
+      this.slug = el.dataset.slug || "";
+      this.title = el.dataset.title || "";
+      this.body = el.dataset.body || "";
+      this.error = el.dataset.error || "";
+    },
+    togglePreview() {
+      this.preview = !this.preview;
+    },
+    async submit() {
+      this.error = "";
+      this.loading = true;
+      try {
+        const r = await fetch("/edit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            slug: this.slug,
+            title: this.title,
+            body: this.body,
+          }),
+        });
+        if (r.ok) {
+          window.location.href = "/view/" + encodeURIComponent(this.slug);
+        } else {
+          const t = await r.text();
+          const m = t.match(/<p class="subtitle">([^<]+)<\/p>/);
+          this.error = m ? m[1] : r.statusText;
+        }
+      } catch (e) {
+        this.error = "An error occurred";
+      } finally {
+        this.loading = false;
+      }
+    },
+  };
+}
+</script>
 {% endblock head %}
 {% block body %}
 <section class="section">

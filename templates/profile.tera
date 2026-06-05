@@ -4,7 +4,7 @@
 <section class="section">
   <div class="container is-max-desktop">
     <h1 class="title is-4">Profile</h1>
-    <div x-data="{
+    <div class="block" x-data="{
       show: false,
       code: '{{ invite_code }}',
       baseUrl: '{{ base_url }}',
@@ -46,7 +46,7 @@
           <p>
             This code is valid until {{ invite_code_expiry }}. It cannot be revoked, and anyone with it can invite unlimited users.
           </p>
-          <p class="block"><a class="has-text-weight-bold" :href="baseUrl + '/sign-up?invite=' + code" x-text="baseUrl + '/sign-up?invite=' + code"></a></p>
+          <p class="block"><a class="has-text-weight-bold" style="word-break: break-all" :href="baseUrl + '/sign-up?invite=' + code" x-text="baseUrl + '/sign-up?invite=' + code"></a></p>
         </div>
         <p class="has-text-success" x-show="copied" x-cloak>
           Copied to clipboard!

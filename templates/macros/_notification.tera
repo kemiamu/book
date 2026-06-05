@@ -1,6 +1,6 @@
 {% macro error_notification() %}
-<div class="notification is-danger is-light" x-show="error" x-cloak>
-  <button class="delete" x-on:click="error=''"></button>
+<div class="notification is-danger" x-show="error" x-cloak>
+  <button class="delete" type="button" x-on:click="error=null"></button>
   <p x-text="error"></p>
 </div>
 {% endmacro error_notification %}
