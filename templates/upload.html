@@ -1,15 +1,14 @@
 {% extends "base.html" %}
 <!-- -->
-{% import "macros.html" as ui %}
-<!-- -->
 {% block title %}Upload File - {{ site_title }}{% endblock title %}
 <!-- -->
 {% block head %}
 <script defer src="{{ base_url }}/js/upload.js"></script>
 {% endblock head %}
 <!-- -->
-{% block body %} {{ ui::section_header(title="Upload File", current="Upload
-File") }}
+{% block body %}
+<!-- -->
+{{ ui::section_header(title="Upload File", current="Upload File") }}
 <section class="section">
   <div class="container is-max-desktop">
     <form x-data="uploadApp()" x-on:submit.prevent="submit">

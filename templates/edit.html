@@ -1,4 +1,4 @@
-{% extends "base.html" %} {% import "macros.html" as ui %}
+{% extends "base.html" %}
 <!-- -->
 {% block title %}Edit - {{ site_title }}{% endblock title %}
 <!-- -->
@@ -6,9 +6,13 @@
 <script defer src="{{ base_url }}/js/edit.js"></script>
 {% endblock head %}
 <!-- -->
-{% block body %} {% if slug | length > 0 %} {{ ui::section_header(title="Edit
-Page", current="Edit") }} {% else %} {{ ui::section_header(title="New Page",
-current="Edit") }} {% endif %}
+{% block body %}
+<!-- -->
+{% if slug | length > 0 %}
+{{ ui::section_header(title='Edit Page', current='Edit') }}
+{% else %}
+{{ ui::section_header(title='New Page', current='Edit') }}
+{% endif %}
 <section class="section">
   <div class="container is-max-desktop">
     <form
