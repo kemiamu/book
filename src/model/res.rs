@@ -1,7 +1,5 @@
 use pulldown_cmark as markdown;
-use redb::{TableDefinition, TypeName, Value};
-use rkyv::rancor;
-use rkyv::{Archive, Deserialize, Serialize};
+use redb::TableDefinition;
 use std::collections::HashSet;
 
 /// pages table definition
@@ -12,11 +10,11 @@ pub const PAGE_BODIES: TableDefinition<&str, Markdown> = TableDefinition::new("p
 /// files table definition
 pub const FILES: TableDefinition<&str, ResourceMeta> = TableDefinition::new("files");
 /// file blobs table definition
-pub const FILE_BLOBS: TableDefinition<&str, FileBlob> = TableDefinition::new("file_blobs");
+pub const FILE_BLOBS: TableDefinition<&str, Vec<u8>> = TableDefinition::new("file_blobs");
 
 // meta
 
-#[derive(Archive, Serialize, Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// metadata for a resource
 pub struct ResourceMeta {
     pub title: String,
@@ -48,12 +46,22 @@ impl ResourceMeta {
 
 // page
 
-#[derive(Archive, Serialize, Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 #[repr(transparent)]
 /// markdown content wrapper
-pub struct Markdown(pub String);
+pub struct Markdown(String);
 
 impl Markdown {
+    /// create markdown from string
+    pub fn new(content: impl Into<String>) -> Self {
+        Self(content.into())
+    }
+
+    /// get the raw markdown text
+    pub fn into_inner(self) -> String {
+        self.0
+    }
+
     /// render markdown to html
     pub fn render(&self) -> String {
         let parser = markdown::Parser::new_ext(&self.0, markdown::Options::all());
@@ -63,53 +71,9 @@ impl Markdown {
     }
 }
 
-// file
-
-#[derive(Archive, Serialize, Deserialize, Debug, Clone)]
-#[repr(transparent)]
-/// file binary blob
-pub struct FileBlob(pub Vec<u8>);
-
 // store
 
-macro_rules! impl_value {
-    ($ty:ty) => {
-        impl Value for $ty {
-            type SelfType<'a>
-                = $ty
-            where
-                Self: 'a;
+use crate::impl_stored;
 
-            type AsBytes<'a>
-                = Vec<u8>
-            where
-                Self: 'a;
-
-            fn type_name() -> TypeName {
-                TypeName::new(stringify!($ty))
-            }
-
-            fn fixed_width() -> Option<usize> {
-                None
-            }
-
-            fn from_bytes<'a>(data: &'a [u8]) -> Self::SelfType<'a>
-            where
-                Self: 'a,
-            {
-                rkyv::from_bytes::<$ty, rancor::Error>(data).unwrap()
-            }
-
-            fn as_bytes<'a, 'b: 'a>(value: &'a Self::SelfType<'b>) -> Self::AsBytes<'a>
-            where
-                Self: 'b,
-            {
-                rkyv::to_bytes::<rancor::Error>(value).unwrap().to_vec()
-            }
-        }
-    };
-}
-
-impl_value!(ResourceMeta);
-impl_value!(Markdown);
-impl_value!(FileBlob);
+impl_stored!(ResourceMeta);
+impl_stored!(Markdown);

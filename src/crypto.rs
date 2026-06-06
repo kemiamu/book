@@ -1,8 +1,6 @@
-use rkyv::Archive;
-
 // mac
 
-#[derive(Archive, rkyv::Serialize, rkyv::Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 /// message authentication code
 pub struct Mac([u8; 32]);

@@ -1,17 +1,17 @@
 use crate::CONFIG;
 use crate::crypto::{Mac, Signable, Signed};
+use crate::impl_stored;
 use crate::model::error::AppError;
 use axum::extract::FromRequestParts;
 use axum::http::StatusCode;
 use axum::http::request::Parts;
 use axum_extra::extract::cookie::CookieJar;
 use redb::TableDefinition;
-use rkyv::{Archive, rancor};
 
 /// users table definition
 pub const USERS: TableDefinition<&str, User> = TableDefinition::new("users");
 
-#[derive(Archive, rkyv::Serialize, rkyv::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// a registered user
 pub struct User {
     password: Mac,
@@ -41,7 +41,7 @@ impl User {
 
 // invite
 
-#[derive(Archive, rkyv::Serialize, rkyv::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// sign-up invitation token
 pub struct Invitation {
     pub inviter: String,
@@ -72,17 +72,17 @@ impl Signable for Invitation {
     }
     /// serialize invitation to bytes
     fn serialize(&self) -> Vec<u8> {
-        rkyv::to_bytes::<rancor::Error>(self).unwrap().into_vec()
+        postcard::to_stdvec(self).unwrap()
     }
     /// deserialize invitation from bytes
     fn deserialize(bytes: &[u8]) -> Option<Self> {
-        rkyv::from_bytes::<Invitation, rancor::Error>(bytes).ok()
+        postcard::from_bytes(bytes).ok()
     }
 }
 
 // session
 
-#[derive(Archive, rkyv::Serialize, rkyv::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// user session token
 pub struct Session {
     pub user: String,
@@ -113,11 +113,11 @@ impl Signable for Session {
     }
     /// serialize session to bytes
     fn serialize(&self) -> Vec<u8> {
-        rkyv::to_bytes::<rancor::Error>(self).unwrap().into_vec()
+        postcard::to_stdvec(self).unwrap()
     }
     /// deserialize session from bytes
     fn deserialize(bytes: &[u8]) -> Option<Self> {
-        rkyv::from_bytes::<Session, rancor::Error>(bytes).ok()
+        postcard::from_bytes(bytes).ok()
     }
 }
 
@@ -154,39 +154,4 @@ impl<S: Send + Sync + 'static> FromRequestParts<S> for UserToken {
     }
 }
 
-// store
-
-impl redb::Value for User {
-    type SelfType<'a>
-        = User
-    where
-        Self: 'a;
-
-    type AsBytes<'a>
-        = Vec<u8>
-    where
-        Self: 'a;
-
-    fn type_name() -> redb::TypeName {
-        redb::TypeName::new("User")
-    }
-
-    fn fixed_width() -> Option<usize> {
-        None
-    }
-
-    fn from_bytes<'a>(data: &'a [u8]) -> Self::SelfType<'a>
-    where
-        Self: 'a,
-    {
-        let owned = data.to_vec();
-        rkyv::from_bytes::<User, rancor::Error>(&owned).unwrap()
-    }
-
-    fn as_bytes<'a, 'b: 'a>(value: &'a Self::SelfType<'b>) -> Self::AsBytes<'a>
-    where
-        Self: 'b,
-    {
-        rkyv::to_bytes::<rancor::Error>(value).unwrap().to_vec()
-    }
-}
+impl_stored!(User);

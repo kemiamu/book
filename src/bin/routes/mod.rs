@@ -194,7 +194,7 @@ pub async fn file_download(
             format!("file blob not found: {slug}"),
         ));
     };
-    let data = blob.value().0.clone();
+    let data = blob.value();
     drop(blobs_table);
 
     let content_type =

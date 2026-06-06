@@ -5,7 +5,7 @@ use axum::response::Html;
 use axum_extra::extract::cookie::CookieJar;
 use book::CONFIG;
 use book::crypto::Signed;
-use book::model::res::{FILE_BLOBS, FILES, FileBlob, ResourceMeta};
+use book::model::res::{FILE_BLOBS, FILES, ResourceMeta};
 use book::model::user::{Session, UserToken};
 use book::model::{AppState, PageContext, error::AppError};
 use redb::ReadableTable;
@@ -109,7 +109,7 @@ pub async fn file_upload_post(
     drop(files_table);
 
     let mut blobs_table = tx.open_table(FILE_BLOBS)?;
-    blobs_table.insert(slug.as_str(), FileBlob(data))?;
+    blobs_table.insert(slug.as_str(), data)?;
     drop(blobs_table);
 
     tx.commit()?;

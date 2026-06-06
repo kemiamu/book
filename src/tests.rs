@@ -16,7 +16,7 @@ fn resource_meta_basics() {
 
 #[test]
 fn markdown_renders_html() {
-    let md = crate::model::res::Markdown("# Title".to_string());
+    let md = crate::model::res::Markdown::new("# Title");
     let html = md.render();
     assert!(html.contains("<h1>"));
     assert!(html.contains("Title"));

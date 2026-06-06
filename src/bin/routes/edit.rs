@@ -48,7 +48,7 @@ pub async fn edit_page(
         (
             page_slug.clone(),
             meta.value().title.clone(),
-            body.value().0.clone(),
+            body.value().into_inner(),
         )
     } else {
         (String::new(), String::new(), String::new())
@@ -100,9 +100,7 @@ pub async fn edit_post(
     }
 
     let mut pages_table = tx.open_table(PAGES)?;
-    let existing = pages_table
-        .get(body.slug.as_str())?
-        .map(|g| g.value().clone());
+    let existing = pages_table.get(body.slug.as_str())?.map(|g| g.value());
     let meta = match existing {
         Some(existing_meta) => ResourceMeta::new(
             &body.title,
@@ -115,7 +113,7 @@ pub async fn edit_post(
     drop(pages_table);
 
     let mut bodies_table = tx.open_table(PAGE_BODIES)?;
-    bodies_table.insert(body.slug.as_str(), Markdown(body.body.clone()))?;
+    bodies_table.insert(body.slug.as_str(), Markdown::new(body.body.clone()))?;
     drop(bodies_table);
 
     tx.commit()?;
