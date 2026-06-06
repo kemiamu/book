@@ -1,7 +1,6 @@
-use crate::CONFIG;
 use crate::crypto::{Mac, Signable, Signed};
-use crate::impl_stored;
 use crate::model::error::AppError;
+use crate::{CONFIG, impl_stored};
 use axum::extract::FromRequestParts;
 use axum::http::StatusCode;
 use axum::http::request::Parts;

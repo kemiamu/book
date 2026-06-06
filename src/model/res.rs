@@ -1,3 +1,4 @@
+use crate::impl_stored;
 use pulldown_cmark as markdown;
 use std::collections::HashSet;
 
@@ -61,8 +62,6 @@ impl Markdown {
 }
 
 // store
-
-use crate::impl_stored;
 
 impl_stored!(ResourceMeta);
 impl_stored!(Markdown);
