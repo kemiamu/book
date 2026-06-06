@@ -104,12 +104,11 @@ pub async fn edit_post(
         .get(body.slug.as_str())?
         .map(|g| g.value().clone());
     let meta = match existing {
-        Some(existing_meta) => ResourceMeta {
-            title: body.title.clone(),
-            creator: existing_meta.creator.clone(),
-            date: existing_meta.date,
-            tags: existing_meta.tags.clone(),
-        },
+        Some(existing_meta) => ResourceMeta::new(
+            &body.title,
+            &existing_meta.creator,
+            existing_meta.tags.clone(),
+        ),
         None => ResourceMeta::new(&body.title, &username, HashSet::new()),
     };
     pages_table.insert(body.slug.as_str(), meta)?;

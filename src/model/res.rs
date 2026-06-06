@@ -21,12 +21,17 @@ pub const FILE_BLOBS: TableDefinition<&str, FileBlob> = TableDefinition::new("fi
 pub struct ResourceMeta {
     pub title: String,
     pub creator: String,
-    pub date: i64,
     pub tags: HashSet<String>,
+    date: i64,
 }
 
 impl ResourceMeta {
-    /// create new resource metadata
+    /// get the unix timestamp of last modification
+    pub fn date(&self) -> i64 {
+        self.date
+    }
+
+    /// create new resource metadata with current timestamp
     pub fn new(
         title: impl Into<String>,
         creator: impl Into<String>,
@@ -35,8 +40,8 @@ impl ResourceMeta {
         Self {
             title: title.into(),
             creator: creator.into(),
-            date: time::UtcDateTime::now().unix_timestamp(),
             tags,
+            date: time::UtcDateTime::now().unix_timestamp(),
         }
     }
 }

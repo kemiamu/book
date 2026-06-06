@@ -47,28 +47,40 @@ pub async fn home_page(
     let tx = state.db.begin_read()?;
 
     let pages_table = tx.open_table(PAGES)?;
-    let mut pages: Vec<serde_json::Value> = Vec::new();
+    let mut pages: Vec<(String, book::model::res::ResourceMeta)> = Vec::new();
     for result in pages_table.iter()? {
         let (key, value) = result?;
-        let r = value.value();
-        let date = OffsetDateTime::from_unix_timestamp(r.date)
-            .ok()
-            .and_then(|d| d.format(&Iso8601::DATE).ok())
-            .unwrap_or_default();
-        pages.push(serde_json::json!({"name": key.value(), "title": r.title, "date": date}));
+        pages.push((key.value().to_string(), value.value()));
     }
+    pages.sort_by(|a, b| b.1.date().cmp(&a.1.date()));
+    let pages: Vec<serde_json::Value> = pages
+        .into_iter()
+        .map(|(name, r)| {
+            let date = OffsetDateTime::from_unix_timestamp(r.date())
+                .ok()
+                .and_then(|d| d.format(&Iso8601::DATE).ok())
+                .unwrap_or_default();
+            serde_json::json!({"name": name, "title": r.title, "date": date})
+        })
+        .collect();
 
     let files_table = tx.open_table(FILES)?;
-    let mut files: Vec<serde_json::Value> = Vec::new();
+    let mut files: Vec<(String, book::model::res::ResourceMeta)> = Vec::new();
     for result in files_table.iter()? {
         let (key, value) = result?;
-        let r = value.value();
-        let date = OffsetDateTime::from_unix_timestamp(r.date)
-            .ok()
-            .and_then(|d| d.format(&Iso8601::DATE).ok())
-            .unwrap_or_default();
-        files.push(serde_json::json!({"name": key.value(), "title": r.title, "date": date}));
+        files.push((key.value().to_string(), value.value()));
     }
+    files.sort_by(|a, b| b.1.date().cmp(&a.1.date()));
+    let files: Vec<serde_json::Value> = files
+        .into_iter()
+        .map(|(name, r)| {
+            let date = OffsetDateTime::from_unix_timestamp(r.date())
+                .ok()
+                .and_then(|d| d.format(&Iso8601::DATE).ok())
+                .unwrap_or_default();
+            serde_json::json!({"name": name, "title": r.title, "date": date})
+        })
+        .collect();
 
     let user = jar
         .get("session")

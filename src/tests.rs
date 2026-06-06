@@ -11,7 +11,7 @@ fn resource_meta_basics() {
     assert_eq!(meta.title, "Hello");
     assert_eq!(meta.creator, "alice");
     assert!(meta.tags.contains("rust"));
-    assert!(meta.date > 0);
+    assert!(meta.date() > 0);
 }
 
 #[test]
