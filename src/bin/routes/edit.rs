@@ -65,7 +65,7 @@ pub async fn edit_page(
         .insert("body", &body)
         .insert("error", "")
         .insert("user", &user);
-    Ok(Html(page.render("edit.tera")?))
+    Ok(Html(page.render("edit.html")?))
 }
 
 #[derive(Deserialize)]

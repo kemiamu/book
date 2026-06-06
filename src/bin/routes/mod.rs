@@ -80,7 +80,7 @@ pub async fn home_page(
         .insert("pages", &pages)
         .insert("files", &files)
         .insert("user", &user);
-    Ok(Html(page.render("home.tera")?))
+    Ok(Html(page.render("home.html")?))
 }
 
 // view
@@ -121,7 +121,7 @@ pub async fn view_page(
         .insert("content", &body.value().render())
         .insert("user", &user)
         .insert("slug", &slug);
-    Ok(Html(page.render("view.tera")?))
+    Ok(Html(page.render("view.html")?))
 }
 
 // profile
@@ -150,7 +150,7 @@ pub async fn profile_page(
         .insert("user", &user)
         .insert("invite_code", &code)
         .insert("invite_code_expiry", &expires_at);
-    Ok(Html(page.render("profile.tera")?))
+    Ok(Html(page.render("profile.html")?))
 }
 
 // download

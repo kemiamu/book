@@ -21,7 +21,7 @@ pub async fn file_upload_page(_token: UserToken, jar: CookieJar) -> Result<Html<
     let page = PageContext::new()
         .insert("page_title", "Upload File")
         .insert("user", &user);
-    Ok(Html(page.render("upload.tera")?))
+    Ok(Html(page.render("upload.html")?))
 }
 
 /// handle file upload

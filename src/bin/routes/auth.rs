@@ -23,7 +23,7 @@ pub async fn sign_in_page(jar: CookieJar) -> Result<Html<String>, AppError> {
     let page = PageContext::new()
         .insert("page_title", "Sign In")
         .insert("user", &user);
-    Ok(Html(page.render("sign-in.tera")?))
+    Ok(Html(page.render("sign-in.html")?))
 }
 
 #[derive(Deserialize)]
@@ -77,7 +77,7 @@ pub async fn sign_up_page(
         .insert("page_title", "Sign Up")
         .insert("invite", &invite)
         .insert("user", &user);
-    Ok(Html(page.render("sign-up.tera")?))
+    Ok(Html(page.render("sign-up.html")?))
 }
 
 #[derive(Deserialize)]
