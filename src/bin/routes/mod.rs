@@ -157,10 +157,12 @@ pub async fn profile_page(
         .and_then(|d| d.format(&Iso8601::DATE).ok())
         .unwrap_or_default();
 
+    let invite_url = format!("{}/sign-up?invite={}", CONFIG.base_url, code);
+
     let page = PageContext::new()
         .insert("page_title", "Profile")
         .insert("user", &user)
-        .insert("invite_code", &code)
+        .insert("invite_url", &invite_url)
         .insert("invite_code_expiry", &expires_at);
     Ok(Html(page.render("profile.html")?))
 }

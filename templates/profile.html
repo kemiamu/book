@@ -6,20 +6,19 @@
     <h1 class="title is-4">Profile</h1>
     <div class="block" x-data="{
       show: false,
-      code: '{{ invite_code }}',
-      baseUrl: '{{ base_url }}',
+      inviteUrl: '{{ invite_url }}',
       copied: false,
       copy() {
-        navigator.clipboard.writeText(this.code).then(() => {
+        navigator.clipboard.writeText(this.inviteUrl).then(() => {
           this.copied = true;
           setTimeout(() => this.copied = false, 2000);
         });
       }
     }">
-      <h2 class="title is-5">Invite Code</h2>
+      <h2 class="title is-5">Invite Link</h2>
       <div class="block">
         <p class="has-text-grey">
-          An invite code is generated each time you visit this page. It expires in 7 days and cannot be revoked or restricted during its validity.
+          An invite link is generated each time you visit this page. It expires in 7 days and cannot be revoked or restricted during its validity.
         </p>
       </div>
       <div class="block">
@@ -29,7 +28,7 @@
           :class="show ? 'is-primary' : 'is-warning'"
           x-on:click="show = !show"
         >
-          <span x-text="show ? 'Hide' : 'Show invite code'"></span>
+          <span x-text="show ? 'Hide' : 'Show invite link'"></span>
         </button>
         <template x-if="show">
           <button class="button" x-on:click="copy">
@@ -42,9 +41,9 @@
         <div class="block">
           <div class="notification is-warning is-block">
             <p>
-              This code is valid until {{ invite_code_expiry }}. It cannot be revoked, and anyone with it can invite unlimited users.
+              This link is valid until {{ invite_code_expiry }}. It cannot be revoked, and anyone with it can invite unlimited users.
             </p>
-            <p class="block"><a class="has-text-weight-bold" style="word-break: break-all" :href="baseUrl + '/sign-up?invite=' + code" x-text="baseUrl + '/sign-up?invite=' + code"></a></p>
+            <p class="block"><a class="has-text-weight-bold" style="word-break: break-all" :href="inviteUrl" x-text="inviteUrl"></a></p>
           </div>
           <template x-if="copied">
             <p class="has-text-success">
