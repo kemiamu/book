@@ -1,5 +1,5 @@
-use book::model::res::{FILE_BLOBS, FILES, PAGE_BODIES, PAGES};
-use book::model::user::{USERS, User};
+use book::model::user::User;
+use book::model::{FILE_BLOBS, FILES, PAGE_BODIES, PAGES, USERS};
 use clap::Parser;
 
 #[derive(Parser)]

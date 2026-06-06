@@ -1,4 +1,5 @@
 use axum::Router;
+use axum::extract::DefaultBodyLimit;
 use axum::routing::{get, post};
 use book::CONFIG;
 use book::model::AppState;
@@ -29,13 +30,14 @@ async fn main() {
         .route("/edit", post(routes::edit_post))
         .route("/upload", get(routes::file_upload_page))
         .route("/upload", post(routes::file_upload_post))
-        .route("/file/{slug}", get(routes::file_download));
+        .route("/file/{slug}", get(routes::file_download))
+        .fallback_service(ServeDir::new(&CONFIG.site_root));
 
     let app = app
-        .fallback_service(ServeDir::new(&CONFIG.site_root))
-        .layer(CompressionLayer::new().zstd(true).gzip(true).deflate(true));
+        .layer(DefaultBodyLimit::max(100 * 1024 * 1024))
+        .layer(CompressionLayer::new().zstd(true).gzip(true).deflate(true))
+        .with_state(Arc::new(AppState { db }));
 
     tracing::info!("🚀 Server started at: {}", &CONFIG.base_url);
-    let app = app.with_state(Arc::new(AppState { db }));
     axum::serve(listener, app).await.unwrap();
 }

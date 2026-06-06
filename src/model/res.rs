@@ -1,16 +1,5 @@
 use pulldown_cmark as markdown;
-use redb::TableDefinition;
 use std::collections::HashSet;
-
-/// pages table definition
-pub const PAGES: TableDefinition<&str, ResourceMeta> = TableDefinition::new("pages");
-/// page bodies table definition
-pub const PAGE_BODIES: TableDefinition<&str, Markdown> = TableDefinition::new("page_bodies");
-
-/// files table definition
-pub const FILES: TableDefinition<&str, ResourceMeta> = TableDefinition::new("files");
-/// file blobs table definition
-pub const FILE_BLOBS: TableDefinition<&str, Vec<u8>> = TableDefinition::new("file_blobs");
 
 // meta
 

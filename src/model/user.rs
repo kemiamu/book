@@ -6,10 +6,6 @@ use axum::extract::FromRequestParts;
 use axum::http::StatusCode;
 use axum::http::request::Parts;
 use axum_extra::extract::cookie::CookieJar;
-use redb::TableDefinition;
-
-/// users table definition
-pub const USERS: TableDefinition<&str, User> = TableDefinition::new("users");
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// a registered user

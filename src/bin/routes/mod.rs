@@ -31,9 +31,9 @@ use axum::response::Html;
 use axum_extra::extract::cookie::CookieJar;
 use book::CONFIG;
 use book::crypto::Signed;
-use book::model::res::{FILES, PAGES};
 use book::model::user::Session;
 use book::model::{AppState, PageContext, error::AppError};
+use book::model::{FILES, PAGES};
 use redb::{ReadableDatabase, ReadableTable};
 use std::sync::Arc;
 use time::OffsetDateTime;
@@ -115,7 +115,7 @@ pub async fn view_page(
         ));
     };
 
-    let bodies_table = tx.open_table(book::model::res::PAGE_BODIES)?;
+    let bodies_table = tx.open_table(book::model::PAGE_BODIES)?;
     let Some(body) = bodies_table.get(slug.as_str())? else {
         return Err(AppError::new(
             axum::http::StatusCode::NOT_FOUND,
@@ -170,7 +170,7 @@ pub async fn profile_page(
 // download
 
 use axum::response::IntoResponse;
-use book::model::res::FILE_BLOBS;
+use book::model::FILE_BLOBS;
 
 /// download a file by slug
 pub async fn file_download(
