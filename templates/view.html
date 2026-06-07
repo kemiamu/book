@@ -4,7 +4,7 @@
 {% block body %}
 <section class="section is-medium">
   <div class="container is-max-desktop">
-    {{ nav::page_header(title=page_title, current=slug, show_edit=true) }}
+    {{ nav::page_header(title=page_title, current=slug, show_edit=true, breadcrumb_text=page_date ~ " @" ~ page_creator) }}
     <hr />
     <div class="content">{{ content | safe }}</div>
   </div>

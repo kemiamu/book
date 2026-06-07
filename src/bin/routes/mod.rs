@@ -47,40 +47,19 @@ pub async fn home_page(
     let tx = state.db.begin_read()?;
 
     let pages_table = tx.open_table(PAGES)?;
-    let mut pages: Vec<(String, book::model::res::ResourceMeta)> = Vec::new();
+    let mut pages = Vec::new();
     for result in pages_table.iter()? {
         let (key, value) = result?;
-        pages.push((key.value().to_string(), value.value()));
+        let date = OffsetDateTime::from_unix_timestamp(value.value().date())
+            .ok()
+            .and_then(|d| d.format(&Iso8601::DATE).ok())
+            .unwrap_or_default();
+        pages.push(serde_json::json!({
+            "name": key.value(),
+            "title": value.value().title,
+            "date": date,
+        }));
     }
-    pages.sort_by(|a, b| b.1.date().cmp(&a.1.date()));
-    let pages: Vec<serde_json::Value> = pages
-        .into_iter()
-        .map(|(name, r)| {
-            let date = OffsetDateTime::from_unix_timestamp(r.date())
-                .ok()
-                .and_then(|d| d.format(&Iso8601::DATE).ok())
-                .unwrap_or_default();
-            serde_json::json!({"name": name, "title": r.title, "date": date})
-        })
-        .collect();
-
-    let files_table = tx.open_table(FILES)?;
-    let mut files: Vec<(String, book::model::res::ResourceMeta)> = Vec::new();
-    for result in files_table.iter()? {
-        let (key, value) = result?;
-        files.push((key.value().to_string(), value.value()));
-    }
-    files.sort_by(|a, b| b.1.date().cmp(&a.1.date()));
-    let files: Vec<serde_json::Value> = files
-        .into_iter()
-        .map(|(name, r)| {
-            let date = OffsetDateTime::from_unix_timestamp(r.date())
-                .ok()
-                .and_then(|d| d.format(&Iso8601::DATE).ok())
-                .unwrap_or_default();
-            serde_json::json!({"name": name, "title": r.title, "date": date})
-        })
-        .collect();
 
     let user = jar
         .get("session")
@@ -90,7 +69,6 @@ pub async fn home_page(
     let page = PageContext::new()
         .insert("page_title", "Home")
         .insert("pages", &pages)
-        .insert("files", &files)
         .insert("user", &user);
     Ok(Html(page.render("home.html")?))
 }
@@ -128,11 +106,19 @@ pub async fn view_page(
         .and_then(|c| Signed::<Session>::parse(c.value(), &CONFIG.secret))
         .map(|s| s.inner.user);
 
+    let meta = meta.value();
+    let date = OffsetDateTime::from_unix_timestamp(meta.date())
+        .ok()
+        .and_then(|d| d.format(&Iso8601::DATE).ok())
+        .unwrap_or_default();
+
     let page = PageContext::new()
-        .insert("page_title", &meta.value().title)
+        .insert("page_title", &meta.title)
         .insert("content", &body.value())
         .insert("user", &user)
-        .insert("slug", &slug);
+        .insert("slug", &slug)
+        .insert("page_date", &date)
+        .insert("page_creator", &meta.creator);
     Ok(Html(page.render("view.html")?))
 }
 

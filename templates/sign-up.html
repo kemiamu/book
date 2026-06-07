@@ -22,10 +22,6 @@ function signUpApp() {
         this.error = "Passwords do not match";
         return;
       }
-      if (this.password.length < 6) {
-        this.error = "Password must be at least 6 characters";
-        return;
-      }
       this.loading = true;
       try {
         const r = await fetch("/sign-up", {
@@ -74,7 +70,7 @@ function signUpApp() {
                 </div>
               </div>
               {{ form::input(label="Username", id="username", model="username", required=true, placeholder="Choose a username", autocomplete="username") }}
-              {{ form::input(label="Password", id="password", model="password", required=true, placeholder="At least 6 characters", type="password", autocomplete="new-password") }}
+              {{ form::input(label="Password", id="password", model="password", required=true, placeholder="Your password", type="password", autocomplete="new-password") }}
               {{ form::input(label="Confirm Password", id="password-confirm", model="confirm", required=true, placeholder="Repeat password", type="password", autocomplete="new-password") }}
               {{ notify::error_notification() }}
               <div class="field">

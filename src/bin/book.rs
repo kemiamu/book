@@ -19,7 +19,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(routes::home_page))
-        .route("/view/{page}", get(routes::view_page))
+        .route("/page/{page}", get(routes::view_page))
         .route("/sign-in", get(routes::sign_in_page))
         .route("/sign-in", post(routes::sign_in_post))
         .route("/sign-up", get(routes::sign_up_page))

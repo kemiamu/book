@@ -11,7 +11,7 @@ use book::model::{AppState, PageContext, error::AppError};
 use book::model::{PAGE_HTML, PAGE_RAW, PAGES};
 use redb::{ReadableDatabase, ReadableTable};
 use serde::Deserialize;
-use std::collections::HashSet;
+
 use std::sync::Arc;
 
 #[derive(Deserialize)]
@@ -102,14 +102,11 @@ pub async fn edit_post(
 
     let mut pages_table = tx.open_table(PAGES)?;
     let existing = pages_table.get(body.slug.as_str())?.map(|g| g.value());
-    let meta = match existing {
-        Some(existing_meta) => ResourceMeta::new(
-            &body.title,
-            &existing_meta.creator,
-            existing_meta.tags.clone(),
-        ),
-        None => ResourceMeta::new(&body.title, &username, HashSet::new()),
-    };
+    let meta = ResourceMeta::new(
+        &body.title,
+        &username,
+        existing.map(|m| m.tags.clone()).unwrap_or_default(),
+    );
     pages_table.insert(body.slug.as_str(), meta)?;
     drop(pages_table);
 

@@ -36,7 +36,7 @@ function editApp() {
           }),
         });
         if (r.ok) {
-          window.location.href = "/view/" + encodeURIComponent(this.slug);
+          window.location.href = "/page/" + encodeURIComponent(this.slug);
         } else {
           const t = await r.text();
           const m = t.match(/<p class="subtitle">([^<]+)<\/p>/);
@@ -77,13 +77,13 @@ function editApp() {
           />
         </div>
         <p class="help">
-          Used in URL: /view/<strong x-text="slug||'...'"></strong>
+          Used in URL: /page/<strong x-text="slug||'...'"></strong>
         </p>
       </div>
       {{ form::input(label="Title", id="title", model="title", required=true, placeholder="Page title") }}
       {{ form::textarea(label="Body (Markdown)", id="body", model="body", placeholder="Write content in Markdown...") }}
       {% if slug | length > 0 %}
-        {% set cancel_url = "/view/" ~ slug %}
+        {% set cancel_url = "/page/" ~ slug %}
       {% else %}
         {% set cancel_url = "/" %}
       {% endif %}
