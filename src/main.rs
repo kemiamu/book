@@ -34,7 +34,7 @@ async fn main() {
         .route("/upload", post(routes::file_upload_post))
         // view / download
         .route("/{entry}/README.md", get(routes::entry_page))
-        .route("/{entry}/files/{file}", get(routes::file_download))
+        .route("/{entry}/{file}", get(routes::file_download))
         // static files
         .nest_service("/img", ServeDir::new("public/img"))
         .nest_service("/css", ServeDir::new("public/css"))
