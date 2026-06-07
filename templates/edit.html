@@ -36,7 +36,7 @@ function editApp() {
           }),
         });
         if (r.ok) {
-          window.location.href = "/page/" + encodeURIComponent(this.slug);
+          window.location.href = "/" + encodeURIComponent(this.slug) + "/README.md";
         } else {
           const t = await r.text();
           const m = t.match(/<p class="subtitle">([^<]+)<\/p>/);
@@ -55,7 +55,7 @@ function editApp() {
 {% block body %}
 <section class="section">
   <div class="container is-max-desktop">
-    <h1 class="title is-4">{% if slug | length > 0 %}Edit Page{% else %}New Page{% endif %}</h1>
+    <h1 class="title is-4">{% if slug | length > 0 %}Edit Entry{% else %}New Entry{% endif %}</h1>
     <form
       x-data="editApp()"
       x-on:submit.prevent="submit"
@@ -77,13 +77,13 @@ function editApp() {
           />
         </div>
         <p class="help">
-          Used in URL: /page/<strong x-text="slug||'...'"></strong>
+          Used in URL: /<strong x-text="slug||'...'"></strong>/README.md
         </p>
       </div>
       {{ form::input(label="Title", id="title", model="title", required=true, placeholder="Page title") }}
       {{ form::textarea(label="Body (Markdown)", id="body", model="body", placeholder="Write content in Markdown...") }}
       {% if slug | length > 0 %}
-        {% set cancel_url = "/page/" ~ slug %}
+        {% set cancel_url = "/" ~ slug ~ "/README.md" %}
       {% else %}
         {% set cancel_url = "/" %}
       {% endif %}

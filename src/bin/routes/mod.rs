@@ -1,12 +1,13 @@
 use axum::Json;
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use axum::response::Html;
+use axum::response::{Html, IntoResponse};
 use axum_extra::extract::cookie::CookieJar;
 use book::CONFIG;
 use book::crypto::Signed;
-use book::model::{AppState, PageContext, error::AppError, user::Session};
-use book::model::{FILES, PAGE_HTML, PAGES};
+use book::error::AppError;
+use book::model::{AppState, Invitation, PageContext, Session, UserToken};
+use book::model::{ENTRIES, ENTRY_HTML, FILE_BLOB, FILES};
 use redb::{ReadableDatabase, ReadableTable};
 use std::sync::Arc;
 use time::OffsetDateTime;
@@ -37,20 +38,21 @@ fn err(status: StatusCode, msg: impl ToString) -> (StatusCode, Json<serde_json::
 
 // home
 
-/// show home page with pages and files
+/// show home page with entries
 pub async fn home_page(
     jar: CookieJar,
     State(state): State<Arc<AppState>>,
 ) -> Result<Html<String>, AppError> {
     let tx = state.db.begin_read()?;
 
-    let pages_table = tx.open_table(PAGES)?;
-    let mut pages = Vec::new();
-    for result in pages_table.iter()? {
+    let entries_table = tx.open_table(ENTRIES)?;
+    let mut entries = Vec::new();
+    for result in entries_table.iter()? {
         let (key, value) = result?;
-        pages.push(serde_json::json!({
+        let entry_meta = value.value();
+        entries.push(serde_json::json!({
             "name": key.value(),
-            "title": value.value().title,
+            "title": entry_meta.title,
         }));
     }
 
@@ -61,36 +63,34 @@ pub async fn home_page(
 
     let page = PageContext::new()
         .insert("page_title", "Home")
-        .insert("pages", &pages)
+        .insert("entries", &entries)
         .insert("user", &user);
     Ok(Html(page.render("home.html")?))
 }
 
 // view
 
-use axum::extract::Path;
-
-/// show a single page
-pub async fn view_page(
+/// show an entry page
+pub async fn entry_page(
     jar: CookieJar,
     State(state): State<Arc<AppState>>,
     Path(slug): Path<String>,
 ) -> Result<Html<String>, AppError> {
     let tx = state.db.begin_read()?;
 
-    let pages_table = tx.open_table(PAGES)?;
-    let Some(meta) = pages_table.get(slug.as_str())? else {
+    let entries_table = tx.open_table(ENTRIES)?;
+    let Some(row) = entries_table.get(slug.as_str())? else {
         return Err(AppError::new(
-            axum::http::StatusCode::NOT_FOUND,
-            format!("page not found: {slug}"),
+            StatusCode::NOT_FOUND,
+            format!("entry not found: {slug}"),
         ));
     };
 
-    let html_table = tx.open_table(PAGE_HTML)?;
+    let html_table = tx.open_table(ENTRY_HTML)?;
     let Some(body) = html_table.get(slug.as_str())? else {
         return Err(AppError::new(
-            axum::http::StatusCode::NOT_FOUND,
-            format!("page body not found: {slug}"),
+            StatusCode::NOT_FOUND,
+            format!("entry body not found: {slug}"),
         ));
     };
 
@@ -99,20 +99,20 @@ pub async fn view_page(
         .and_then(|c| Signed::<Session>::parse(c.value(), &CONFIG.secret))
         .map(|s| s.inner.user);
 
-    let meta = meta.value();
-    let date = OffsetDateTime::from_unix_timestamp(meta.date())
+    let entry_meta = row.value();
+    let date = OffsetDateTime::from_unix_timestamp(entry_meta.last_modified)
         .ok()
         .and_then(|d| d.format(&Iso8601::DATE).ok())
         .unwrap_or_default();
 
     let page = PageContext::new()
-        .insert("page_title", &meta.title)
+        .insert("page_title", &entry_meta.title)
         .insert("content", &body.value())
         .insert("user", &user)
         .insert("slug", &slug)
         .insert("page_date", &date)
-        .insert("page_editor", &meta.editor);
-    Ok(Html(page.render("view.html")?))
+        .insert("page_editor", &entry_meta.editor);
+    Ok(Html(page.render("entry.html")?))
 }
 
 // profile
@@ -120,14 +120,14 @@ pub async fn view_page(
 /// show profile page
 pub async fn profile_page(
     jar: CookieJar,
-    book::model::user::UserToken(token): book::model::user::UserToken,
+    UserToken(token): UserToken,
 ) -> Result<Html<String>, AppError> {
     let user = jar
         .get("session")
         .and_then(|c| Signed::<Session>::parse(c.value(), &CONFIG.secret))
         .map(|s| s.inner.user);
 
-    let invite = book::model::user::Invitation::new(&token?);
+    let invite = Invitation::new(&token?);
     let invitation = Signed::new(invite.clone());
     let code = invitation.generate(&CONFIG.secret);
 
@@ -148,44 +148,41 @@ pub async fn profile_page(
 
 // download
 
-use axum::response::IntoResponse;
-use book::model::FILE_BLOB;
-
-/// download a file by slug
+/// download a file by entry and file slug
 pub async fn file_download(
     State(state): State<Arc<AppState>>,
-    Path(slug): Path<String>,
+    Path((entry_slug, file_slug)): Path<(String, String)>,
 ) -> Result<(StatusCode, impl IntoResponse), AppError> {
     let tx = state.db.begin_read()?;
 
     let files_table = tx.open_table(FILES)?;
-    let Some(meta) = files_table.get(slug.as_str())? else {
+    let key = (entry_slug.as_str(), file_slug.as_str());
+    let Some(_meta) = files_table.get(key)? else {
         return Err(AppError::new(
             StatusCode::NOT_FOUND,
-            format!("file not found: {slug}"),
+            format!("file not found: {entry_slug}/{file_slug}"),
         ));
     };
-    let filename = meta.value().title.clone();
     drop(files_table);
 
     let blobs_table = tx.open_table(FILE_BLOB)?;
-    let Some(blob) = blobs_table.get(slug.as_str())? else {
+    let Some(blob) = blobs_table.get(key)? else {
         return Err(AppError::new(
             StatusCode::NOT_FOUND,
-            format!("file blob not found: {slug}"),
+            format!("file blob not found: {entry_slug}/{file_slug}"),
         ));
     };
     let data = blob.value();
     drop(blobs_table);
 
     let content_type =
-        mime_guess::from_path(&filename).first_or(mime_guess::mime::APPLICATION_OCTET_STREAM);
+        mime_guess::from_path(&file_slug).first_or(mime_guess::mime::APPLICATION_OCTET_STREAM);
 
     let headers = [
         ("Content-Type", content_type.to_string()),
         (
             "Content-Disposition",
-            format!("inline; filename=\"{}\"", filename),
+            format!("inline; filename=\"{}\"", file_slug),
         ),
     ];
 

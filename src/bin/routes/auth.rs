@@ -1,18 +1,21 @@
 use super::{err, internal_error};
 use axum::Json;
 use axum::extract::Query;
+use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{Html, IntoResponse, Redirect};
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use book::CONFIG;
 use book::crypto::Signed;
-use book::model::user::{Invitation, Session, User};
+use book::error::AppError;
+use book::model::PageContext;
 use book::model::USERS;
-use book::model::{PageContext, error::AppError};
+use book::model::{AppState, Invitation, Session, User};
 use redb::ReadableDatabase;
 use redb::ReadableTable;
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// show sign-in page
 pub async fn sign_in_page(jar: CookieJar) -> Result<Html<String>, AppError> {
@@ -37,7 +40,7 @@ pub struct SignInForm {
 /// handle sign-in form submission
 pub async fn sign_in_post(
     jar: CookieJar,
-    axum::extract::State(state): axum::extract::State<std::sync::Arc<book::model::AppState>>,
+    State(state): State<Arc<AppState>>,
     Json(body): Json<SignInForm>,
 ) -> Result<(CookieJar, Json<serde_json::Value>), (StatusCode, Json<serde_json::Value>)> {
     let tx = state.db.begin_read().map_err(internal_error)?;
@@ -92,7 +95,7 @@ pub struct SignUpForm {
 /// handle sign-up form submission
 pub async fn sign_up_post(
     jar: CookieJar,
-    axum::extract::State(state): axum::extract::State<std::sync::Arc<book::model::AppState>>,
+    State(state): State<Arc<AppState>>,
     Json(body): Json<SignUpForm>,
 ) -> Result<(CookieJar, Json<serde_json::Value>), (StatusCode, Json<serde_json::Value>)> {
     let invitation = Signed::<Invitation>::parse(&body.invite, &CONFIG.secret)

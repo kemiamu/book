@@ -18,19 +18,24 @@ async fn main() {
     let listener = TcpListener::bind(&CONFIG.server_addr).await.unwrap();
 
     let app = Router::new()
+        // home
         .route("/", get(routes::home_page))
-        .route("/page/{page}", get(routes::view_page))
+        // account
         .route("/sign-in", get(routes::sign_in_page))
         .route("/sign-in", post(routes::sign_in_post))
         .route("/sign-up", get(routes::sign_up_page))
         .route("/sign-up", post(routes::sign_up_post))
         .route("/sign-out", get(routes::sign_out))
         .route("/profile", get(routes::profile_page))
+        // edit / upload
         .route("/edit", get(routes::edit_page))
         .route("/edit", post(routes::edit_post))
         .route("/upload", get(routes::file_upload_page))
         .route("/upload", post(routes::file_upload_post))
-        .route("/file/{slug}", get(routes::file_download))
+        // view / download
+        .route("/{entry}/README.md", get(routes::entry_page))
+        .route("/{entry}/files/{file}", get(routes::file_download))
+        // static files
         .fallback_service(ServeDir::new(&CONFIG.site_root));
 
     let app = app

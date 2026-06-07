@@ -5,49 +5,49 @@ use axum::response::Html;
 use axum_extra::extract::cookie::CookieJar;
 use book::CONFIG;
 use book::crypto::Signed;
-use book::model::res::ResourceMeta;
-use book::model::user::{Session, UserToken};
-use book::model::{AppState, PageContext, error::AppError};
-use book::model::{PAGE_HTML, PAGE_RAW, PAGES};
+use book::error::AppError;
+use book::model::{AppState, EntryMeta, Markdown, PageContext};
+use book::model::{ENTRIES, ENTRY_HTML, ENTRY_RAW};
+use book::model::{Session, UserToken};
 use redb::{ReadableDatabase, ReadableTable};
 use serde::Deserialize;
 
 use std::sync::Arc;
 
 #[derive(Deserialize)]
-/// edit page query params
+/// edit entry query params
 pub struct EditQuery {
-    pub page: Option<String>,
+    pub entry: Option<String>,
 }
 
-/// show edit page
+/// show edit entry page
 pub async fn edit_page(
     jar: CookieJar,
     _token: UserToken,
     State(state): State<Arc<AppState>>,
     Query(params): Query<EditQuery>,
 ) -> Result<Html<String>, AppError> {
-    let (slug, title, body) = if let Some(ref page_slug) = params.page {
+    let (slug, title, body) = if let Some(ref entry_slug) = params.entry {
         let tx = state.db.begin_read()?;
 
-        let pages_table = tx.open_table(PAGES)?;
-        let meta = pages_table.get(page_slug.as_str())?.ok_or_else(|| {
+        let entries_table = tx.open_table(ENTRIES)?;
+        let meta = entries_table.get(entry_slug.as_str())?.ok_or_else(|| {
             AppError::new(
                 StatusCode::NOT_FOUND,
-                format!("page not found: {page_slug}"),
+                format!("entry not found: {entry_slug}"),
             )
         })?;
 
-        let bodies_table = tx.open_table(PAGE_RAW)?;
-        let body = bodies_table.get(page_slug.as_str())?.ok_or_else(|| {
+        let bodies_table = tx.open_table(ENTRY_RAW)?;
+        let body = bodies_table.get(entry_slug.as_str())?.ok_or_else(|| {
             AppError::new(
                 StatusCode::NOT_FOUND,
-                format!("page body not found: {page_slug}"),
+                format!("entry body not found: {entry_slug}"),
             )
         })?;
 
         (
-            page_slug.clone(),
+            entry_slug.clone(),
             meta.value().title.clone(),
             body.value().into_inner(),
         )
@@ -100,24 +100,24 @@ pub async fn edit_post(
         ));
     }
 
-    let mut pages_table = tx.open_table(PAGES)?;
-    let existing = pages_table.get(body.slug.as_str())?.map(|g| g.value());
-    let meta = ResourceMeta::new(
+    let mut entries_table = tx.open_table(ENTRIES)?;
+    let existing = entries_table.get(body.slug.as_str())?.map(|g| g.value());
+    let meta = EntryMeta::new(
         &body.title,
         &username,
-        existing.map(|m| m.tags.clone()).unwrap_or_default(),
+        existing.map(|m| m.tags).unwrap_or_default(),
     );
-    pages_table.insert(body.slug.as_str(), meta)?;
-    drop(pages_table);
+    entries_table.insert(body.slug.as_str(), meta)?;
+    drop(entries_table);
 
-    let md = book::model::res::Markdown::new(body.body.clone());
+    let md = Markdown::new(body.body.clone());
     let html = md.render();
 
-    let mut raw_table = tx.open_table(PAGE_RAW)?;
+    let mut raw_table = tx.open_table(ENTRY_RAW)?;
     raw_table.insert(body.slug.as_str(), md)?;
     drop(raw_table);
 
-    let mut html_table = tx.open_table(PAGE_HTML)?;
+    let mut html_table = tx.open_table(ENTRY_HTML)?;
     html_table.insert(body.slug.as_str(), html)?;
     drop(html_table);
 

@@ -2,21 +2,21 @@ use crate::crypto::{Signable, Signed};
 use std::collections::HashSet;
 
 #[test]
-fn resource_meta_basics() {
+fn entry_meta_basics() {
     let mut tags = HashSet::new();
     tags.insert("rust".to_string());
 
-    let meta = crate::model::res::ResourceMeta::new("Hello", "alice", tags);
+    let meta = crate::model::EntryMeta::new("Hello", "alice", tags);
 
     assert_eq!(meta.title, "Hello");
     assert_eq!(meta.editor, "alice");
     assert!(meta.tags.contains("rust"));
-    assert!(meta.date() > 0);
+    assert!(meta.last_modified > 0);
 }
 
 #[test]
 fn markdown_renders_html() {
-    let md = crate::model::res::Markdown::new("# Title");
+    let md = crate::model::Markdown::new("# Title");
     let html = md.render();
     assert!(html.contains("<h1>"));
     assert!(html.contains("Title"));
@@ -24,7 +24,7 @@ fn markdown_renders_html() {
 
 #[test]
 fn user_password_verify() {
-    let user = crate::model::user::User::new("mypass", "mysecret", "admin");
+    let user = crate::model::User::new("mypass", "mysecret", "admin");
     assert!(user.verify("mypass", "mysecret"));
     assert!(!user.verify("wrong", "mysecret"));
     assert!(!user.verify("mypass", "wrong"));
@@ -32,7 +32,7 @@ fn user_password_verify() {
 
 #[test]
 fn session_expiry() {
-    let s = crate::model::user::Session::new("alice");
+    let s = crate::model::Session::new("alice");
     assert_eq!(s.user, "alice");
     assert!(s.expires_at > time::UtcDateTime::now().unix_timestamp());
     assert!(s.is_valid());
@@ -40,29 +40,29 @@ fn session_expiry() {
 
 #[test]
 fn invitation_roundtrip() {
-    let inv = crate::model::user::Invitation::new("alice");
+    let inv = crate::model::Invitation::new("alice");
     let bytes = inv.serialize();
-    let restored = crate::model::user::Invitation::deserialize(&bytes).unwrap();
+    let restored = crate::model::Invitation::deserialize(&bytes).unwrap();
     assert_eq!(restored.inviter, "alice");
     assert_eq!(restored.expires_at, inv.expires_at);
 }
 
 #[test]
 fn signed_generate_and_parse() {
-    let inv = crate::model::user::Invitation::new("bob");
+    let inv = crate::model::Invitation::new("bob");
     let secret = "test-secret";
 
     let signed = Signed::new(inv);
     let token = signed.generate(secret);
 
-    let parsed = Signed::<crate::model::user::Invitation>::parse(&token, secret);
+    let parsed = Signed::<crate::model::Invitation>::parse(&token, secret);
     assert!(parsed.is_some());
     assert_eq!(parsed.unwrap().inner.inviter, "bob");
 }
 
 #[test]
 fn heading_attributes_parsed() {
-    let md = crate::model::res::Markdown::new("# Hello { #my-id .my-class custom=val }");
+    let md = crate::model::Markdown::new("# Hello { #my-id .my-class custom=val }");
     let html = md.render();
     assert!(html.contains("id=\"my-id\""));
     assert!(html.contains("class=\"my-class\""));
@@ -71,7 +71,7 @@ fn heading_attributes_parsed() {
 
 #[test]
 fn signed_tampered_token_fails() {
-    let inv = crate::model::user::Invitation::new("bob");
+    let inv = crate::model::Invitation::new("bob");
     let secret = "test-secret";
 
     let signed = Signed::new(inv);
@@ -82,6 +82,6 @@ fn signed_tampered_token_fails() {
     sig_bytes[0] ^= 0x01;
     let tampered = format!("{}.{}", data_hex, hex::encode(sig_bytes));
 
-    let parsed = Signed::<crate::model::user::Invitation>::parse(&tampered, secret);
+    let parsed = Signed::<crate::model::Invitation>::parse(&tampered, secret);
     assert!(parsed.is_none());
 }

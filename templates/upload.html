@@ -6,27 +6,26 @@
 <script defer>
 function uploadApp() {
   return {
-    slug: "",
-    title: "",
+    entrySlug: "",
+    fileSlug: "",
     file: null,
     fileName: "",
     error: "",
     loading: false,
-    _slugEdited: false,
-    _titleEdited: false,
+    _entrySlugEdited: false,
+    _fileSlugEdited: false,
     onFileSelect(e) {
       const f = e.target.files[0];
       if (!f) return;
       this.file = f;
       this.fileName = f.name;
-      if (!this._slugEdited) this.slug = f.name;
-      if (!this._titleEdited) this.title = f.name;
+      if (!this._fileSlugEdited) this.fileSlug = f.name;
     },
-    markSlugEdited() {
-      this._slugEdited = true;
+    markEntrySlugEdited() {
+      this._entrySlugEdited = true;
     },
-    markTitleEdited() {
-      this._titleEdited = true;
+    markFileSlugEdited() {
+      this._fileSlugEdited = true;
     },
     async submit() {
       this.error = "";
@@ -37,11 +36,11 @@ function uploadApp() {
       this.loading = true;
       try {
         const fd = new FormData();
-        fd.append("slug", this.slug);
-        fd.append("title", this.title);
+        fd.append("entry_slug", this.entrySlug);
+        fd.append("file_slug", this.fileSlug);
         fd.append("file", this.file);
         const r = await fetch("/upload", { method: "POST", body: fd });
-        if (r.ok) window.location.href = "/";
+        if (r.ok) window.location.href = "/" + encodeURIComponent(this.entrySlug) + "/README.md";
         else {
           const d = await r.json();
           this.error = d.error || r.statusText;
@@ -59,8 +58,10 @@ function uploadApp() {
 {% block body %}
 <section class="section is-medium">
   <div class="container is-max-desktop">
-    <h1 class="title is-4">Upload File</h1>
+    <h1 class="title is-4">Upload File to Entry</h1>
     <form x-data="uploadApp()" x-on:submit.prevent="submit">
+      {{ form::input(label="Entry Slug", id="entry_slug", model="entrySlug", required=true, placeholder="my-entry", extra_attr='x-on:input="markEntrySlugEdited"') }}
+      {{ form::input(label="File Slug", id="file_slug", model="fileSlug", required=true, placeholder="image.png", extra_attr='x-on:input="markFileSlugEdited"') }}
       <div class="field">
         <label class="label">File</label>
         <div class="file has-name is-fullwidth">
@@ -77,24 +78,6 @@ function uploadApp() {
             <span class="file-name" x-text="fileName || ''"></span>
           </label>
         </div>
-      </div>
-      {{ form::input(label="Title", id="title", model="title", required=true, placeholder="Display title", extra_attr='x-on:input="markTitleEdited"') }}
-      <div class="field">
-        <label class="label" for="slug">Slug (URL name)</label>
-        <div class="control">
-          <input
-            class="input"
-            type="text"
-            id="slug"
-            x-model="slug"
-            required
-            placeholder="my-file-name"
-            x-on:input="markSlugEdited"
-          />
-        </div>
-        <p class="help">
-          Download URL: /file/<strong x-text="slug||'...'"></strong>
-        </p>
       </div>
       {{ form::button_group(submit_text="Upload", loading_text="Uploading...", cancel_url="/") }}
       {{ notify::error_notification() }}

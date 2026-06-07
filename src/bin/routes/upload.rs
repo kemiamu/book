@@ -5,12 +5,11 @@ use axum::response::Html;
 use axum_extra::extract::cookie::CookieJar;
 use book::CONFIG;
 use book::crypto::Signed;
-use book::model::res::ResourceMeta;
-use book::model::user::{Session, UserToken};
-use book::model::{AppState, PageContext, error::AppError};
+use book::error::AppError;
+use book::model::FileMeta;
+use book::model::{AppState, PageContext, Session, UserToken};
 use book::model::{FILE_BLOB, FILES};
 use redb::ReadableTable;
-use std::collections::HashSet;
 use std::sync::Arc;
 
 /// show file upload page
@@ -33,8 +32,8 @@ pub async fn file_upload_post(
 ) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
     let username = token?;
 
-    let mut slug = String::new();
-    let mut title = String::new();
+    let mut entry_slug = String::new();
+    let mut file_slug = String::new();
     let mut file_data: Option<Vec<u8>> = None;
 
     while let Some(field) = multipart
@@ -44,14 +43,14 @@ pub async fn file_upload_post(
     {
         let name = field.name().unwrap_or("").to_string();
         match name.as_str() {
-            "slug" => {
-                slug = field.text().await.map_err(|e| {
-                    AppError::new(StatusCode::BAD_REQUEST, format!("invalid slug: {e}"))
+            "entry_slug" => {
+                entry_slug = field.text().await.map_err(|e| {
+                    AppError::new(StatusCode::BAD_REQUEST, format!("invalid entry slug: {e}"))
                 })?
             }
-            "title" => {
-                title = field.text().await.map_err(|e| {
-                    AppError::new(StatusCode::BAD_REQUEST, format!("invalid title: {e}"))
+            "file_slug" => {
+                file_slug = field.text().await.map_err(|e| {
+                    AppError::new(StatusCode::BAD_REQUEST, format!("invalid file slug: {e}"))
                 })?
             }
             "file" => {
@@ -79,16 +78,16 @@ pub async fn file_upload_post(
         }
     }
 
-    if slug.is_empty() {
+    if entry_slug.is_empty() {
         return Err(AppError::new(
             StatusCode::BAD_REQUEST,
-            "Slug must not be empty",
+            "Entry slug must not be empty",
         ));
     }
-    if title.is_empty() {
+    if file_slug.is_empty() {
         return Err(AppError::new(
             StatusCode::BAD_REQUEST,
-            "Title must not be empty",
+            "File slug must not be empty",
         ));
     }
     let Some(data) = file_data else {
@@ -98,19 +97,20 @@ pub async fn file_upload_post(
     let tx = state.db.begin_write()?;
 
     let mut files_table = tx.open_table(FILES)?;
-    if files_table.get(slug.as_str())?.is_some() {
+    let key = (entry_slug.as_str(), file_slug.as_str());
+    if files_table.get(key)?.is_some() {
         return Err(AppError::new(
             StatusCode::CONFLICT,
-            format!("A file with slug '{slug}' already exists"),
+            format!("A file with slug '{file_slug}' already exists in entry '{entry_slug}'"),
         ));
     }
 
-    let meta = ResourceMeta::new(&title, &username, HashSet::new());
-    files_table.insert(slug.as_str(), meta)?;
+    let meta = FileMeta::new(&username);
+    files_table.insert(key, meta)?;
     drop(files_table);
 
     let mut blobs_table = tx.open_table(FILE_BLOB)?;
-    blobs_table.insert(slug.as_str(), data)?;
+    blobs_table.insert(key, data)?;
     drop(blobs_table);
 
     tx.commit()?;

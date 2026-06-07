@@ -1,7 +1,10 @@
 use std::sync::LazyLock;
 
 pub mod crypto;
+pub mod error;
+pub mod html;
 pub mod model;
+
 #[cfg(test)]
 pub mod tests;
 
