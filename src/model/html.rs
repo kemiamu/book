@@ -55,11 +55,6 @@ where
         self.writer.write_str(s)
     }
 
-    #[inline]
-    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> Result<(), fmt::Error> {
-        self.writer.write_fmt(args)
-    }
-
     fn raw_text(&mut self) -> Result<String, fmt::Error> {
         let mut buf = String::new();
         let mut nest: usize = Default::default();
@@ -91,125 +86,85 @@ where
 
     fn handle_event(&mut self, event: Event<'a>) -> Result<(), fmt::Error> {
         match event {
-            Event::Start(tag) => {
-                self.start_tag(tag)?;
-            }
-            Event::End(tag) => {
-                self.end_tag(tag)?;
-            }
-            Event::Text(text) => {
-                if !self.in_non_writing_block {
-                    self.write_str(&encode_safe(&text))?;
-                }
-            }
-            Event::Code(text) => {
-                self.write_fmt(format_args!("<code>{}</code>", encode_safe(&text),))?;
-            }
-            Event::InlineMath(text) => {
-                self.write_fmt(format_args!(
-                    "<span class=\"math math-inline\">{}</span>",
-                    encode_safe(&text),
-                ))?;
-            }
-            Event::DisplayMath(text) => {
-                self.write_fmt(format_args!(
-                    "<span class=\"math math-display\">{}</span>",
-                    encode_safe(&text),
-                ))?;
-            }
-            Event::Html(html) | Event::InlineHtml(html) => {
-                self.write_str(&html)?;
-            }
-            Event::SoftBreak => {
-                self.write_str(" ")?;
-            }
-            Event::HardBreak => {
-                self.write_str("<br />")?;
-            }
-            Event::Rule => {
-                self.write_str("<hr />")?;
-            }
-            Event::FootnoteReference(name) => {
-                self.write_fmt(format_args!(
-                    "<sup class=\"footnote-reference\"><a href=\"#{}\">",
-                    encode_safe(&name)
-                ))?;
-                let len = self.numbers.len() + 1;
-                let number = *self.numbers.entry(name).or_insert(len);
-                self.write_fmt(format_args!("[{number}]</a></sup>"))?;
-            }
-            Event::TaskListMarker(true) => {
-                self.write_str("<input disabled=\"\" type=\"checkbox\" checked=\"\"/>")?;
-            }
-            Event::TaskListMarker(false) => {
-                self.write_str("<input disabled=\"\" type=\"checkbox\"/>")?;
-            }
-        }
-        Ok(())
-    }
+            // paragraph
+            Event::Start(Tag::Paragraph) => self.write_str("<p>")?,
+            Event::End(TagEnd::Paragraph) => self.write_str("</p>")?,
 
-    fn start_tag(&mut self, tag: Tag<'a>) -> Result<(), fmt::Error> {
-        match tag {
-            Tag::HtmlBlock => {}
-            Tag::Paragraph => {
-                self.write_str("<p>")?;
-            }
-            Tag::Heading {
+            // heading
+            Event::Start(Tag::Heading {
                 level,
                 id,
                 classes,
                 attrs,
-            } => {
-                self.write_fmt(format_args!("<{}>", level))?;
+            }) => {
+                write!(self.writer, "<{level}")?;
                 if let Some(id) = id {
-                    self.write_fmt(format_args!(" id=\"{}\"", encode_safe(&id),))?;
+                    write!(self.writer, " id=\"{}\"", encode_safe(&id))?;
                 }
-                let mut classes = classes.iter();
-                if let Some(class) = classes.next() {
-                    self.write_str(" class=\"")?;
-                    self.write_str(&encode_safe(class))?;
-                    for class in classes {
-                        self.write_fmt(format_args!(" {}", encode_safe(class)))?;
+                let mut class_iter = classes.iter();
+                if let Some(class) = class_iter.next() {
+                    write!(self.writer, " class=\"{}\"", encode_safe(class))?;
+                    for class in class_iter {
+                        write!(self.writer, " {}", encode_safe(class))?;
                     }
-                    self.write_str("\"")?;
                 }
                 for (attr, value) in attrs {
-                    self.write_str(" ")?;
-                    self.write_str(&encode_safe(&attr))?;
+                    write!(self.writer, " {}", encode_safe(&attr))?;
                     match value {
-                        Some(val) => self.write_fmt(format_args!("=\"{}\"", encode_safe(&val),))?,
-                        None => self.write_str("=\"\"")?,
+                        Some(val) => write!(self.writer, "=\"{}\"", encode_safe(&val))?,
+                        None => write!(self.writer, "=\"\"")?,
                     }
                 }
                 self.write_str(">")?;
             }
-            Tag::Table(alignments) => {
+            Event::End(TagEnd::Heading(level)) => {
+                write!(self.writer, "</{level}>")?;
+            }
+
+            // table
+            Event::Start(Tag::Table(alignments)) => {
                 self.table_alignments = alignments;
                 self.write_str("<table class=\"is-fullwidth\">")?;
             }
-            Tag::TableHead => {
+            Event::End(TagEnd::Table) => self.write_str("</tbody></table>")?,
+            Event::Start(Tag::TableHead) => {
                 self.table_state = TableState::Head;
                 self.table_cell_index = 0;
                 self.write_str("<thead><tr>")?;
             }
-            Tag::TableRow => {
+            Event::End(TagEnd::TableHead) => {
+                self.write_str("</tr></thead><tbody>")?;
+                self.table_state = TableState::Body;
+            }
+            Event::Start(Tag::TableRow) => {
                 self.table_cell_index = 0;
                 self.write_str("<tr>")?;
             }
-            Tag::TableCell => {
+            Event::End(TagEnd::TableRow) => self.write_str("</tr>")?,
+            Event::Start(Tag::TableCell) => {
                 let tag = match self.table_state {
                     TableState::Head => "th",
                     TableState::Body => "td",
                 };
-                let styles = match self.table_alignments.get(self.table_cell_index) {
+                let style = match self.table_alignments.get(self.table_cell_index) {
                     Some(&pulldown_cmark::Alignment::Left) => "style=\"text-align: left\"",
                     Some(&pulldown_cmark::Alignment::Center) => "style=\"text-align: center\"",
                     Some(&pulldown_cmark::Alignment::Right) => "style=\"text-align: right\"",
                     _ => "",
                 };
-                self.write_fmt(format_args!("<{tag} {styles}>"))?;
+                write!(self.writer, "<{tag} {style}>")?;
             }
-            Tag::BlockQuote(kind) => {
+            Event::End(TagEnd::TableCell) => {
+                let tag = match self.table_state {
+                    TableState::Head => "th",
+                    TableState::Body => "td",
+                };
+                write!(self.writer, "</{tag}>")?;
+                self.table_cell_index += 1;
+            }
+
+            // blockquote
+            Event::Start(Tag::BlockQuote(kind)) => {
                 let suffix = match kind {
                     None => "",
                     Some(kind) => match kind {
@@ -220,205 +175,186 @@ where
                         pulldown_cmark::BlockQuoteKind::Caution => " is-danger",
                     },
                 };
-                self.write_fmt(format_args!("<div class=\"notification{}\">", suffix))?;
+                write!(self.writer, "<div class=\"notification{suffix}\">")?;
             }
-            Tag::CodeBlock(info) => {
+            Event::End(TagEnd::BlockQuote(_)) => self.write_str("</div>")?,
+
+            // codeblock
+            Event::Start(Tag::CodeBlock(info)) => {
                 let lang = match info {
                     CodeBlockKind::Fenced(info) => info.split(' ').next().unwrap().to_string(),
                     CodeBlockKind::Indented => String::new(),
                 };
-                match lang.is_empty() {
-                    true => self.write_str("<pre><code>")?,
-                    false => self.write_fmt(format_args!(
+                if lang.is_empty() {
+                    self.write_str("<pre><code>")?;
+                } else {
+                    write!(
+                        self.writer,
                         "<pre><code class=\"language-{}\">",
-                        encode_safe(&lang),
-                    ))?,
+                        encode_safe(&lang)
+                    )?;
                 }
             }
-            Tag::List(Some(start)) => {
-                self.write_fmt(format_args!("<ol start=\"{}\">", start))?;
+            Event::End(TagEnd::CodeBlock) => self.write_str("</code></pre>")?,
+
+            // list
+            Event::Start(Tag::List(Some(start))) => {
+                write!(self.writer, "<ol start=\"{start}\">")?;
             }
-            Tag::List(None) => {
-                self.write_str("<ul>")?;
-            }
-            Tag::Item => {
-                self.write_str("<li>")?;
-            }
-            Tag::DefinitionList => {
-                self.write_str("<dl>")?;
-            }
-            Tag::DefinitionListTitle => {
-                self.write_str("<dt>")?;
-            }
-            Tag::DefinitionListDefinition => {
-                self.write_str("<dd>")?;
-            }
-            Tag::Subscript => {
-                self.write_str("<sub>")?;
-            }
-            Tag::Superscript => {
-                self.write_str("<sup>")?;
-            }
-            Tag::Emphasis => {
-                self.write_str("<em>")?;
-            }
-            Tag::Strong => {
-                self.write_str("<strong>")?;
-            }
-            Tag::Strikethrough => {
-                self.write_str("<del>")?;
-            }
-            Tag::Link {
-                link_type: pulldown_cmark::LinkType::Email,
+            Event::End(TagEnd::List(true)) => self.write_str("</ol>")?,
+            Event::Start(Tag::List(None)) => self.write_str("<ul>")?,
+            Event::End(TagEnd::List(false)) => self.write_str("</ul>")?,
+
+            // item
+            Event::Start(Tag::Item) => self.write_str("<li>")?,
+            Event::End(TagEnd::Item) => self.write_str("</li>")?,
+
+            // definition list
+            Event::Start(Tag::DefinitionList) => self.write_str("<dl>")?,
+            Event::End(TagEnd::DefinitionList) => self.write_str("</dl>")?,
+            Event::Start(Tag::DefinitionListTitle) => self.write_str("<dt>")?,
+            Event::End(TagEnd::DefinitionListTitle) => self.write_str("</dt>")?,
+            Event::Start(Tag::DefinitionListDefinition) => self.write_str("<dd>")?,
+            Event::End(TagEnd::DefinitionListDefinition) => self.write_str("</dd>")?,
+
+            // subscript / superscript
+            Event::Start(Tag::Subscript) => self.write_str("<sub>")?,
+            Event::End(TagEnd::Subscript) => self.write_str("</sub>")?,
+            Event::Start(Tag::Superscript) => self.write_str("<sup>")?,
+            Event::End(TagEnd::Superscript) => self.write_str("</sup>")?,
+
+            // inline styles
+            Event::Start(Tag::Emphasis) => self.write_str("<em>")?,
+            Event::End(TagEnd::Emphasis) => self.write_str("</em>")?,
+            Event::Start(Tag::Strong) => self.write_str("<strong>")?,
+            Event::End(TagEnd::Strong) => self.write_str("</strong>")?,
+            Event::Start(Tag::Strikethrough) => self.write_str("<del>")?,
+            Event::End(TagEnd::Strikethrough) => self.write_str("</del>")?,
+
+            // link
+            Event::Start(Tag::Link {
+                link_type,
                 dest_url,
                 title,
                 id: _,
-            } => {
-                if title.is_empty() {
-                    self.write_fmt(format_args!(
-                        "<a href=\"mailto:{}\">",
-                        encode_safe(&dest_url),
-                    ))?;
-                } else {
-                    self.write_fmt(format_args!(
-                        "<a href=\"mailto:{}\" title=\"{}\">",
-                        encode_safe(&dest_url),
-                        encode_safe(&title),
-                    ))?;
+            }) => match link_type {
+                pulldown_cmark::LinkType::Email => {
+                    if title.is_empty() {
+                        write!(
+                            self.writer,
+                            "<a href=\"mailto:{}\">",
+                            encode_safe(&dest_url)
+                        )?;
+                    } else {
+                        write!(
+                            self.writer,
+                            "<a href=\"mailto:{}\" title=\"{}\">",
+                            encode_safe(&dest_url),
+                            encode_safe(&title)
+                        )?;
+                    }
                 }
-            }
-            Tag::Link {
+                _ => {
+                    if title.is_empty() {
+                        write!(self.writer, "<a href=\"{}\">", encode_safe(&dest_url))?;
+                    } else {
+                        write!(
+                            self.writer,
+                            "<a href=\"{}\" title=\"{}\">",
+                            encode_safe(&dest_url),
+                            encode_safe(&title)
+                        )?;
+                    }
+                }
+            },
+            Event::End(TagEnd::Link) => self.write_str("</a>")?,
+
+            // image
+            Event::Start(Tag::Image {
                 link_type: _,
                 dest_url,
                 title,
                 id: _,
-            } => {
-                if title.is_empty() {
-                    self.write_fmt(format_args!("<a href=\"{}\">", encode_safe(&dest_url),))?;
-                } else {
-                    self.write_fmt(format_args!(
-                        "<a href=\"{}\" title=\"{}\">",
-                        encode_safe(&dest_url),
-                        encode_safe(&title),
-                    ))?;
-                }
-            }
-            Tag::Image {
-                link_type: _,
-                dest_url,
-                title,
-                id: _,
-            } => {
+            }) => {
                 let alt_text = self.raw_text()?;
-                if !title.is_empty() {
-                    self.write_fmt(format_args!(
-                        "<img src=\"{}\" alt=\"{}\" title=\"{}\" />",
-                        encode_safe(&dest_url),
-                        alt_text,
-                        encode_safe(&title),
-                    ))?;
-                } else {
-                    self.write_fmt(format_args!(
-                        "<img src=\"{}\" alt=\"{}\" />",
-                        encode_safe(&dest_url),
-                        alt_text,
-                    ))?;
-                }
+                let caption = match title.is_empty() {
+                    true => alt_text.clone(),
+                    false => format!("{alt_text} ({})", encode_safe(&title)),
+                };
+                write!(
+                    self.writer,
+                    "<figure><img alt=\"{}\" src=\"{}\" /><figcaption>{caption}</figcaption></figure>",
+                    encode_safe(&alt_text),
+                    encode_safe(&dest_url),
+                )?;
             }
-            Tag::FootnoteDefinition(name) => {
+            Event::End(TagEnd::Image) => {}
+
+            // footnote
+            Event::Start(Tag::FootnoteDefinition(name)) => {
                 let len = self.numbers.len() + 1;
                 let number = *self.numbers.entry(name.clone()).or_insert(len);
-                self.write_fmt(format_args!(
-                    "<div class=\"footnote-definition\" id=\"{}\">",
+                write!(
+                    self.writer,
+                    "<div class=\"footnote-definition\" id=\"{}\"><strong class=\"footnote-definition-label\">{}:</strong> ",
                     encode_safe(&name),
-                ))?;
-                self.write_fmt(format_args!(
-                    "<strong class=\"footnote-definition-label\">{}:</strong> ",
-                    number,
-                ))?;
+                    number
+                )?;
             }
-            Tag::MetadataBlock(_) => {
-                self.in_non_writing_block = true;
-            }
-        }
-        Ok(())
-    }
+            Event::End(TagEnd::FootnoteDefinition) => self.write_str("</div>")?,
 
-    fn end_tag(&mut self, tag: TagEnd) -> Result<(), fmt::Error> {
-        match tag {
-            TagEnd::HtmlBlock => {}
-            TagEnd::Paragraph => {
-                self.write_str("</p>")?;
+            // metadatablock
+            Event::Start(Tag::MetadataBlock(_)) => self.in_non_writing_block = true,
+            Event::End(TagEnd::MetadataBlock(_)) => self.in_non_writing_block = false,
+
+            // htmlblock
+            Event::Start(Tag::HtmlBlock) => {}
+            Event::End(TagEnd::HtmlBlock) => {}
+
+            // non-tag events
+            Event::Text(text) => {
+                if !self.in_non_writing_block {
+                    self.write_str(&encode_safe(&text))?;
+                }
             }
-            TagEnd::Heading(level) => {
-                self.write_fmt(format_args!("</{level}>"))?;
+            Event::Code(text) => {
+                write!(self.writer, "<code>{}</code>", encode_safe(&text))?;
             }
-            TagEnd::Table => {
-                self.write_str("</tbody></table>")?;
+            Event::InlineMath(text) => {
+                write!(
+                    self.writer,
+                    "<span class=\"math math-inline\">{}</span>",
+                    encode_safe(&text)
+                )?;
             }
-            TagEnd::TableHead => {
-                self.write_str("</tr></thead><tbody>")?;
-                self.table_state = TableState::Body;
+            Event::DisplayMath(text) => {
+                write!(
+                    self.writer,
+                    "<span class=\"math math-display\">{}</span>",
+                    encode_safe(&text)
+                )?;
             }
-            TagEnd::TableRow => {
-                self.write_str("</tr>")?;
+            Event::Html(html) | Event::InlineHtml(html) => {
+                self.write_str(&html)?;
             }
-            TagEnd::TableCell => {
-                let tag = match self.table_state {
-                    TableState::Head => "th",
-                    TableState::Body => "td",
-                };
-                self.write_fmt(format_args!("</{tag}>"))?;
-                self.table_cell_index += 1;
+            Event::SoftBreak => self.write_str(" ")?,
+            Event::HardBreak => self.write_str("<br />")?,
+            Event::Rule => self.write_str("<hr />")?,
+            Event::FootnoteReference(name) => {
+                write!(
+                    self.writer,
+                    "<sup class=\"footnote-reference\"><a href=\"#{}\">",
+                    encode_safe(&name)
+                )?;
+                let len = self.numbers.len() + 1;
+                let number = *self.numbers.entry(name).or_insert(len);
+                write!(self.writer, "[{number}]</a></sup>")?;
             }
-            TagEnd::BlockQuote(_) => {
-                self.write_str("</div>")?;
+            Event::TaskListMarker(true) => {
+                self.write_str("<input disabled=\"\" type=\"checkbox\" checked=\"\"/>")?;
             }
-            TagEnd::CodeBlock => {
-                self.write_str("</code></pre>")?;
-            }
-            TagEnd::List(true) => {
-                self.write_str("</ol>")?;
-            }
-            TagEnd::List(false) => {
-                self.write_str("</ul>")?;
-            }
-            TagEnd::Item => {
-                self.write_str("</li>")?;
-            }
-            TagEnd::DefinitionList => {
-                self.write_str("</dl>")?;
-            }
-            TagEnd::DefinitionListTitle => {
-                self.write_str("</dt>")?;
-            }
-            TagEnd::DefinitionListDefinition => {
-                self.write_str("</dd>")?;
-            }
-            TagEnd::Emphasis => {
-                self.write_str("</em>")?;
-            }
-            TagEnd::Superscript => {
-                self.write_str("</sup>")?;
-            }
-            TagEnd::Subscript => {
-                self.write_str("</sub>")?;
-            }
-            TagEnd::Strong => {
-                self.write_str("</strong>")?;
-            }
-            TagEnd::Strikethrough => {
-                self.write_str("</del>")?;
-            }
-            TagEnd::Link => {
-                self.write_str("</a>")?;
-            }
-            TagEnd::Image => {}
-            TagEnd::FootnoteDefinition => {
-                self.write_str("</div>")?;
-            }
-            TagEnd::MetadataBlock(_) => {
-                self.in_non_writing_block = false;
+            Event::TaskListMarker(false) => {
+                self.write_str("<input disabled=\"\" type=\"checkbox\"/>")?;
             }
         }
         Ok(())
