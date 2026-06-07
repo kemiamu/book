@@ -9,7 +9,7 @@ fn resource_meta_basics() {
     let meta = crate::model::res::ResourceMeta::new("Hello", "alice", tags);
 
     assert_eq!(meta.title, "Hello");
-    assert_eq!(meta.creator, "alice");
+    assert_eq!(meta.editor, "alice");
     assert!(meta.tags.contains("rust"));
     assert!(meta.date() > 0);
 }

@@ -6,31 +6,35 @@ use std::collections::HashSet;
 // meta
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-/// metadata for a resource
+/// metadata for resources
 pub struct ResourceMeta {
-    pub title: String,
-    pub creator: String,
-    pub tags: HashSet<String>,
-    date: i64,
+    pub editor: String,
+    pub last_modified: i64,
 }
 
 impl ResourceMeta {
-    /// get the unix timestamp of last modification
-    pub fn date(&self) -> i64 {
-        self.date
-    }
-
     /// create new resource metadata with current timestamp
-    pub fn new(
-        title: impl Into<String>,
-        creator: impl Into<String>,
-        tags: HashSet<String>,
-    ) -> Self {
+    pub fn new(editor: impl Into<String>) -> Self {
+        Self {
+            editor: editor.into(),
+            last_modified: time::UtcDateTime::now().unix_timestamp(),
+        }
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+/// metadata for entries
+pub struct EntryMeta {
+    pub title: String,
+    pub tags: HashSet<String>,
+}
+
+impl EntryMeta {
+    /// create new entry metadata with title and tags
+    pub fn new(title: impl Into<String>, tags: HashSet<String>) -> Self {
         Self {
             title: title.into(),
-            creator: creator.into(),
             tags,
-            date: time::UtcDateTime::now().unix_timestamp(),
         }
     }
 }
@@ -65,4 +69,5 @@ impl Markdown {
 // store
 
 impl_stored!(ResourceMeta);
+impl_stored!(EntryMeta);
 impl_stored!(Markdown);

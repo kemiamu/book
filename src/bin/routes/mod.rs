@@ -1,3 +1,17 @@
+use axum::Json;
+use axum::extract::State;
+use axum::http::StatusCode;
+use axum::response::Html;
+use axum_extra::extract::cookie::CookieJar;
+use book::CONFIG;
+use book::crypto::Signed;
+use book::model::{AppState, PageContext, error::AppError, user::Session};
+use book::model::{FILES, PAGE_HTML, PAGES};
+use redb::{ReadableDatabase, ReadableTable};
+use std::sync::Arc;
+use time::OffsetDateTime;
+use time::format_description::well_known::Iso8601;
+
 mod auth;
 mod edit;
 mod upload;
@@ -7,9 +21,6 @@ pub use edit::*;
 pub use upload::*;
 
 // util
-
-use axum::Json;
-use axum::http::StatusCode;
 
 /// create a 500 internal server error response
 fn internal_error(e: impl ToString) -> (StatusCode, Json<serde_json::Value>) {
@@ -26,19 +37,6 @@ fn err(status: StatusCode, msg: impl ToString) -> (StatusCode, Json<serde_json::
 
 // home
 
-use axum::extract::State;
-use axum::response::Html;
-use axum_extra::extract::cookie::CookieJar;
-use book::CONFIG;
-use book::crypto::Signed;
-use book::model::user::Session;
-use book::model::{AppState, PageContext, error::AppError};
-use book::model::{FILES, PAGE_HTML, PAGES};
-use redb::{ReadableDatabase, ReadableTable};
-use std::sync::Arc;
-use time::OffsetDateTime;
-use time::format_description::well_known::Iso8601;
-
 /// show home page with pages and files
 pub async fn home_page(
     jar: CookieJar,
@@ -50,14 +48,9 @@ pub async fn home_page(
     let mut pages = Vec::new();
     for result in pages_table.iter()? {
         let (key, value) = result?;
-        let date = OffsetDateTime::from_unix_timestamp(value.value().date())
-            .ok()
-            .and_then(|d| d.format(&Iso8601::DATE).ok())
-            .unwrap_or_default();
         pages.push(serde_json::json!({
             "name": key.value(),
             "title": value.value().title,
-            "date": date,
         }));
     }
 
@@ -118,7 +111,7 @@ pub async fn view_page(
         .insert("user", &user)
         .insert("slug", &slug)
         .insert("page_date", &date)
-        .insert("page_creator", &meta.creator);
+        .insert("page_editor", &meta.editor);
     Ok(Html(page.render("view.html")?))
 }
 

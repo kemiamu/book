@@ -1,4 +1,4 @@
-use redb::TableDefinition;
+use redb::TableDefinition as Table;
 
 pub mod error;
 pub mod html;
@@ -6,19 +6,19 @@ pub mod res;
 pub mod user;
 
 /// pages table definition
-pub const PAGES: TableDefinition<&str, res::ResourceMeta> = TableDefinition::new("pages");
+pub const PAGES: Table<&str, (res::ResourceMeta, res::EntryMeta)> = Table::new("pages");
 /// page raw markdown table definition
-pub const PAGE_RAW: TableDefinition<&str, res::Markdown> = TableDefinition::new("page_raw");
+pub const PAGE_RAW: Table<&str, res::Markdown> = Table::new("page_raw");
 /// page rendered html table definition
-pub const PAGE_HTML: TableDefinition<&str, String> = TableDefinition::new("page_html");
+pub const PAGE_HTML: Table<&str, String> = Table::new("page_html");
 
 /// files table definition
-pub const FILES: TableDefinition<&str, res::ResourceMeta> = TableDefinition::new("files");
+pub const FILES: Table<&str, res::ResourceMeta> = Table::new("files");
 /// file blob table definition
-pub const FILE_BLOB: TableDefinition<&str, Vec<u8>> = TableDefinition::new("file_blob");
+pub const FILE_BLOB: Table<&str, Vec<u8>> = Table::new("file_blob");
 
 /// users table definition
-pub const USERS: TableDefinition<&str, user::User> = TableDefinition::new("users");
+pub const USERS: Table<&str, user::User> = Table::new("users");
 
 // state
 
