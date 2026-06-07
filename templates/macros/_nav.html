@@ -1,17 +1,17 @@
-{% macro breadcrumb(current) %}
+{% macro back_breadcrumb(current) %}
 <nav class="breadcrumb" aria-label="breadcrumbs">
   <ul>
     <li><a href="/">Home</a></li>
     <li class="is-active"><a href="#" class="has-text-grey" aria-current="page">{{ current }}</a></li>
   </ul>
 </nav>
-{% endmacro breadcrumb %}
+{% endmacro back_breadcrumb %}
 
 {% macro section_header(title, current) %}
 <section class="section is-medium">
   <div class="container is-max-desktop">
     <h1 class="title is-4">{{ title }}</h1>
-    {{ self::breadcrumb(current=current) }}
+    {{ self::back_breadcrumb(current=current) }}
   </div>
 </section>
 {% endmacro section_header %}
@@ -20,7 +20,19 @@
 <a href="/" class="has-text-grey">&larr; Back to Home</a>
 {% endmacro back_link %}
 
-{% macro page_header(title, current, breadcrumb_text) %}
-<h1 class="title is-4 mb-0 pb-2">{{ title }}</h1>
-{{ self::breadcrumb(current=breadcrumb_text | default(value=title)) }}
-{% endmacro page_header %}
+{% macro entry_header(title, current, breadcrumb_text) %}
+<div class="columns is-vcentered">
+  <div class="column">
+    <h1 class="title is-4 mb-0 pb-2">{{ title }}</h1>
+    {{ self::back_breadcrumb(current=breadcrumb_text | default(value=title)) }}
+  </div>
+  {% if user %}
+  <div class="column is-narrow">
+    <div class="buttons">
+      <a href="/edit?entry={{ slug }}" class="button">Edit</a>
+      <a href="/upload?entry={{ slug }}" class="button">Upload</a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endmacro entry_header %}
