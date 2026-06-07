@@ -9,9 +9,12 @@
         <p class="title is-6">Links</p>
         <ul>
           <li><a href="/" class="has-text-grey">Home</a></li>
+          {% if entry_slug and user %}
+          <li><a href="/edit?entry={{ entry_slug }}" class="has-text-grey">Edit</a></li>
+          <li><a href="/upload?entry={{ entry_slug }}" class="has-text-grey">Upload File</a></li>
+          {% endif %}
           {% if user %}
           <li><a href="/edit" class="has-text-grey">New Entry</a></li>
-          <li><a href="/upload" class="has-text-grey">Upload File</a></li>
           <li><a href="/profile" class="has-text-grey">Profile</a></li>
           <li><a href="/sign-out" class="has-text-grey">Sign Out</a></li>
           {% else %}

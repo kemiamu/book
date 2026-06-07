@@ -20,16 +20,7 @@
 <a href="/" class="has-text-grey">&larr; Back to Home</a>
 {% endmacro back_link %}
 
-{% macro page_header(title, current, show_edit, breadcrumb_text) %}
-<div class="columns is-mobile is-vcentered">
-  <div class="column">
-    <h1 class="title is-4 mb-0 pb-2">{{ title }}</h1>
-    {{ self::breadcrumb(current=breadcrumb_text | default(value=title)) }}
-  </div>
-  {% if show_edit and user %}
-  <div class="column is-narrow">
-    <a class="button" href="/edit?entry={{ current }}">Edit</a>
-  </div>
-  {% endif %}
-</div>
+{% macro page_header(title, current, breadcrumb_text) %}
+<h1 class="title is-4 mb-0 pb-2">{{ title }}</h1>
+{{ self::breadcrumb(current=breadcrumb_text | default(value=title)) }}
 {% endmacro page_header %}

@@ -1,5 +1,5 @@
 use axum::Json;
-use axum::extract::{Multipart, State};
+use axum::extract::{Multipart, Query, State};
 use axum::http::StatusCode;
 use axum::response::Html;
 use axum_extra::extract::cookie::CookieJar;
@@ -10,17 +10,28 @@ use book::model::FileMeta;
 use book::model::{AppState, PageContext, Session, UserToken};
 use book::model::{FILE_BLOB, FILES};
 use redb::ReadableTable;
+use serde::Deserialize;
 use std::sync::Arc;
 
+#[derive(Deserialize)]
+pub struct UploadQuery {
+    pub entry: Option<String>,
+}
+
 /// show file upload page
-pub async fn file_upload_page(_token: UserToken, jar: CookieJar) -> Result<Html<String>, AppError> {
+pub async fn file_upload_page(
+    _token: UserToken,
+    jar: CookieJar,
+    Query(params): Query<UploadQuery>,
+) -> Result<Html<String>, AppError> {
     let user = jar
         .get("session")
         .and_then(|c| Signed::<Session>::parse(c.value(), &CONFIG.secret))
         .map(|s| s.inner.user);
     let page = PageContext::new()
         .insert("page_title", "Upload File")
-        .insert("user", &user);
+        .insert("user", &user)
+        .insert("default_entry", &params.entry);
     Ok(Html(page.render("upload.html")?))
 }
 

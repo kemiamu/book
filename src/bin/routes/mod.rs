@@ -111,7 +111,8 @@ pub async fn entry_page(
         .insert("user", &user)
         .insert("slug", &slug)
         .insert("page_date", &date)
-        .insert("page_editor", &entry_meta.editor);
+        .insert("page_editor", &entry_meta.editor)
+        .insert("entry_slug", &slug);
     Ok(Html(page.render("entry.html")?))
 }
 

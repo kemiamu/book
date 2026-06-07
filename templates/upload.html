@@ -6,7 +6,7 @@
 <script defer>
 function uploadApp() {
   return {
-    entrySlug: "",
+    entrySlug: "{{ default_entry | default(value="") }}",
     fileSlug: "",
     file: null,
     fileName: "",
@@ -14,6 +14,12 @@ function uploadApp() {
     loading: false,
     _entrySlugEdited: false,
     _fileSlugEdited: false,
+    init() {
+      const el = this.$el;
+      if (el.dataset.entry) {
+        this.entrySlug = el.dataset.entry;
+      }
+    },
     onFileSelect(e) {
       const f = e.target.files[0];
       if (!f) return;
@@ -59,8 +65,17 @@ function uploadApp() {
 <section class="section is-medium">
   <div class="container is-max-desktop">
     <h1 class="title is-4">Upload File to Entry</h1>
-    <form x-data="uploadApp()" x-on:submit.prevent="submit">
+    <form x-data="uploadApp()" x-on:submit.prevent="submit" data-entry="{{ default_entry | default(value="") }}">
+      {% if default_entry %}
+      <div class="field">
+        <label class="label">Entry Slug</label>
+        <div class="control">
+          <p class="has-text-weight-bold" style="word-break: break-all">{{ default_entry }}</p>
+        </div>
+      </div>
+      {% else %}
       {{ form::input(label="Entry Slug", id="entry_slug", model="entrySlug", required=true, placeholder="my-entry", extra_attr='x-on:input="markEntrySlugEdited"') }}
+      {% endif %}
       {{ form::input(label="File Slug", id="file_slug", model="fileSlug", required=true, placeholder="image.png", extra_attr='x-on:input="markFileSlugEdited"') }}
       <div class="field">
         <label class="label">File</label>
@@ -79,7 +94,12 @@ function uploadApp() {
           </label>
         </div>
       </div>
-      {{ form::button_group(submit_text="Upload", loading_text="Uploading...", cancel_url="/") }}
+      {% if default_entry %}
+        {% set cancel_url = "/" ~ default_entry ~ "/README.md" %}
+      {% else %}
+        {% set cancel_url = "/" %}
+      {% endif %}
+      {{ form::button_group(submit_text="Upload", loading_text="Uploading...", cancel_url=cancel_url) }}
       {{ notify::error_notification() }}
     </form>
   </div>
