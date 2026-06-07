@@ -60,7 +60,8 @@ where
         self.writer.write_fmt(args)
     }
 
-    fn raw_text(&mut self) -> Result<(), fmt::Error> {
+    fn raw_text(&mut self) -> Result<String, fmt::Error> {
+        let mut buf = String::new();
         let mut nest: usize = Default::default();
         while let Some(event) = self.iter.next() {
             match event {
@@ -76,16 +77,16 @@ where
                 | Event::InlineMath(text)
                 | Event::DisplayMath(text)
                 | Event::FootnoteReference(text) => {
-                    self.write_str(&encode_safe(&text))?;
+                    buf.push_str(&encode_safe(&text));
                 }
                 Event::SoftBreak | Event::HardBreak | Event::Rule => {
-                    self.write_str(" ")?;
+                    buf.push(' ');
                 }
-                Event::TaskListMarker(true) => self.write_str("[x]")?,
-                Event::TaskListMarker(false) => self.write_str("[ ]")?,
+                Event::TaskListMarker(true) => buf.push_str("[x]"),
+                Event::TaskListMarker(false) => buf.push_str("[ ]"),
             }
         }
-        Ok(())
+        Ok(buf)
     }
 
     fn handle_event(&mut self, event: Event<'a>) -> Result<(), fmt::Error> {
@@ -234,9 +235,6 @@ where
                     ))?,
                 }
             }
-            Tag::List(Some(1)) => {
-                self.write_str("<ol>")?;
-            }
             Tag::List(Some(start)) => {
                 self.write_fmt(format_args!("<ol start=\"{}\">", start))?;
             }
@@ -311,22 +309,32 @@ where
                 title,
                 id: _,
             } => {
-                self.write_str("<img src=\"")?;
-                self.write_str(&encode_safe(&dest_url))?;
-                self.write_str("\" alt=\"")?;
-                self.raw_text()?;
+                let alt_text = self.raw_text()?;
                 if !title.is_empty() {
-                    self.write_str("\" title=\"")?;
-                    self.write_str(&encode_safe(&title))?;
+                    self.write_fmt(format_args!(
+                        "<img src=\"{}\" alt=\"{}\" title=\"{}\" />",
+                        encode_safe(&dest_url),
+                        alt_text,
+                        encode_safe(&title),
+                    ))?;
+                } else {
+                    self.write_fmt(format_args!(
+                        "<img src=\"{}\" alt=\"{}\" />",
+                        encode_safe(&dest_url),
+                        alt_text,
+                    ))?;
                 }
-                self.write_str("\" />")?;
             }
             Tag::FootnoteDefinition(name) => {
                 let len = self.numbers.len() + 1;
                 let number = *self.numbers.entry(name.clone()).or_insert(len);
                 self.write_fmt(format_args!(
-                    "<div class=\"footnote-definition\" id=\"{}\"><sup class=\"footnote-definition-label\">{number}</sup>",
+                    "<div class=\"footnote-definition\" id=\"{}\">",
                     encode_safe(&name),
+                ))?;
+                self.write_fmt(format_args!(
+                    "<strong class=\"footnote-definition-label\">{}:</strong> ",
+                    number,
                 ))?;
             }
             Tag::MetadataBlock(_) => {
@@ -405,7 +413,7 @@ where
             TagEnd::Link => {
                 self.write_str("</a>")?;
             }
-            TagEnd::Image => {} // shouldn't happen, handled in start
+            TagEnd::Image => {}
             TagEnd::FootnoteDefinition => {
                 self.write_str("</div>")?;
             }
