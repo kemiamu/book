@@ -59,10 +59,10 @@ function editApp() {
     <form
       x-data="editApp()"
       x-on:submit.prevent="submit"
-      data-slug="{{ slug | safe }}"
-      data-title="{{ title | safe }}"
-      data-body="{{ body | safe }}"
-      data-error="{{ error | safe }}"
+      data-slug="{{ slug }}"
+      data-title="{{ title }}"
+      data-body="{{ body }}"
+      data-error="{{ error }}"
     >
       <div class="field">
         <label class="label" for="slug">Slug (URL name)</label>

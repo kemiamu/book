@@ -22,7 +22,8 @@ pub(crate) struct HtmlWriter<'a, I, W> {
     table_alignments: Vec<pulldown_cmark::Alignment>,
     table_cell_index: usize,
 
-    // numbers
+    // footnote
+    in_footnote: bool,
     numbers: HashMap<pulldown_cmark::CowStr<'a>, usize>,
 }
 
@@ -39,6 +40,7 @@ where
             table_state: TableState::Head,
             table_alignments: Default::default(),
             table_cell_index: 0,
+            in_footnote: false,
             numbers: HashMap::new(),
         }
     }
@@ -87,8 +89,12 @@ where
     fn handle_event(&mut self, event: Event<'a>) -> Result<(), fmt::Error> {
         match event {
             // paragraph
-            Event::Start(Tag::Paragraph) => self.write_str("<p>")?,
-            Event::End(TagEnd::Paragraph) => self.write_str("</p>")?,
+            Event::Start(Tag::Paragraph) if !self.in_footnote => {
+                self.write_str("<p>")?;
+            }
+            Event::End(TagEnd::Paragraph) if !self.in_footnote => {
+                self.write_str("</p>")?;
+            }
 
             // heading
             Event::Start(Tag::Heading {
@@ -124,7 +130,7 @@ where
             // table
             Event::Start(Tag::Table(alignments)) => {
                 self.table_alignments = alignments;
-                self.write_str("<table class=\"is-fullwidth\">")?;
+                self.write_str("<table class=\"table is-fullwidth\">")?;
             }
             Event::End(TagEnd::Table) => self.write_str("</tbody></table>")?,
             Event::Start(Tag::TableHead) => {
@@ -164,20 +170,22 @@ where
             }
 
             // blockquote
-            Event::Start(Tag::BlockQuote(kind)) => {
-                let suffix = match kind {
-                    None => "",
-                    Some(kind) => match kind {
-                        pulldown_cmark::BlockQuoteKind::Note => " is-info",
-                        pulldown_cmark::BlockQuoteKind::Tip => " is-success",
-                        pulldown_cmark::BlockQuoteKind::Important => " is-primary",
-                        pulldown_cmark::BlockQuoteKind::Warning => " is-warning",
-                        pulldown_cmark::BlockQuoteKind::Caution => " is-danger",
-                    },
+            Event::Start(Tag::BlockQuote(None)) => self.write_str("<blockquote>")?,
+            Event::Start(Tag::BlockQuote(Some(kind))) => {
+                let (heading, suffix) = match kind {
+                    pulldown_cmark::BlockQuoteKind::Note => ("Note", " is-info"),
+                    pulldown_cmark::BlockQuoteKind::Tip => ("Tip", " is-success"),
+                    pulldown_cmark::BlockQuoteKind::Important => ("Important", " is-primary"),
+                    pulldown_cmark::BlockQuoteKind::Warning => ("Warning", " is-warning"),
+                    pulldown_cmark::BlockQuoteKind::Caution => ("Caution", " is-danger"),
                 };
-                write!(self.writer, "<div class=\"notification{suffix}\">")?;
+                write!(
+                    self.writer,
+                    "<div class=\"notification{suffix}\"><p class=\"has-text-weight-bold\">{heading}:</p> "
+                )?
             }
-            Event::End(TagEnd::BlockQuote(_)) => self.write_str("</div>")?,
+            Event::End(TagEnd::BlockQuote(None)) => self.write_str("</blockquote>")?,
+            Event::End(TagEnd::BlockQuote(Some(_))) => self.write_str("</div>")?,
 
             // codeblock
             Event::Start(Tag::CodeBlock(info)) => {
@@ -279,7 +287,7 @@ where
                 let alt_text = self.raw_text()?;
                 let caption = match title.is_empty() {
                     true => alt_text.clone(),
-                    false => format!("{alt_text} ({})", encode_safe(&title)),
+                    false => format!("Figure - {alt_text} ({})", encode_safe(&title)),
                 };
                 write!(
                     self.writer,
@@ -294,14 +302,21 @@ where
             Event::Start(Tag::FootnoteDefinition(name)) => {
                 let len = self.numbers.len() + 1;
                 let number = *self.numbers.entry(name.clone()).or_insert(len);
+                self.in_footnote = true;
                 write!(
                     self.writer,
-                    "<div class=\"footnote-definition\" id=\"{}\"><strong class=\"footnote-definition-label\">{}:</strong> ",
+                    "<p class=\"footnote-definition\" id=\"{}\">",
                     encode_safe(&name),
-                    number
+                )?;
+                write!(
+                    self.writer,
+                    "<strong class=\"footnote-definition-label\">{number}:</strong> ",
                 )?;
             }
-            Event::End(TagEnd::FootnoteDefinition) => self.write_str("</div>")?,
+            Event::End(TagEnd::FootnoteDefinition) => {
+                self.in_footnote = false;
+                self.write_str("</p>")?;
+            }
 
             // metadatablock
             Event::Start(Tag::MetadataBlock(_)) => self.in_non_writing_block = true,
@@ -356,6 +371,7 @@ where
             Event::TaskListMarker(false) => {
                 self.write_str("<input disabled=\"\" type=\"checkbox\"/>")?;
             }
+            _ => {}
         }
         Ok(())
     }
