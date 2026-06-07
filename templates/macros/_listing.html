@@ -1,34 +1,18 @@
-{% macro card_grid(items, type) %}
-{% if items %}
-<div class="columns is-multiline">
-  {% for item in items %}
-  <div class="column is-half">
-    <a href="/{{ type }}/{{ item.name }}" class="card">
-      <div class="card-content" :class="dark ? 'has-background-black-ter' : 'has-background-white-ter'">
-        <p class="title is-5">{{ item.title }}</p>
-        <p class="subtitle is-6 has-text-grey">{{ item.date }}</p>
-      </div>
-    </a>
-  </div>
-  {% endfor %}
-</div>
-{% else %}
-<div class="has-text-centered">
-  <p class="has-text-grey">No {{ type }}s yet</p>
-</div>
-{% endif %}
-{% endmacro card_grid %}
-
 {% macro listing(title, items, type) %}
 <section class="section">
   <div class="container is-max-desktop">
-    <div class="level is-mobile">
-      <div class="level-left"><h2 class="title is-4">{{ title }}</h2></div>
-      <div class="level-right">
-        <span class="tag is-medium">{{ items | length }}</span>
-      </div>
+    <div class="menu">
+      <p class="menu-label">{{ title }}</p>
+      <ul class="menu-list">
+        {% for item in items %}
+        <li>
+          <a href="/{{ type }}/{{ item.name }}"
+            ><span class="is-family-monospace"
+              >{{ item.date }} -</span> {{ item.title }}</a>
+        </li>
+        {% endfor %}
+      </ul>
     </div>
-    {{ self::card_grid(items=items, type=type) }}
   </div>
 </section>
 {% endmacro listing %}
