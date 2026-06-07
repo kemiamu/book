@@ -1,4 +1,5 @@
 use crate::impl_stored;
+use crate::model::html::HtmlWriter;
 use pulldown_cmark as markdown;
 use std::collections::HashSet;
 
@@ -55,8 +56,8 @@ impl Markdown {
     /// render markdown to html
     pub fn render(&self) -> String {
         let parser = markdown::Parser::new_ext(&self.0, markdown::Options::all());
-        let mut html_output = String::new();
-        markdown::html::push_html(&mut html_output, parser);
+        let mut html_output: String = Default::default();
+        HtmlWriter::new(parser, &mut html_output).run().unwrap();
         html_output
     }
 }

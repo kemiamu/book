@@ -61,6 +61,15 @@ fn signed_generate_and_parse() {
 }
 
 #[test]
+fn heading_attributes_parsed() {
+    let md = crate::model::res::Markdown::new("# Hello { #my-id .my-class custom=val }");
+    let html = md.render();
+    assert!(html.contains("id=\"my-id\""));
+    assert!(html.contains("class=\"my-class\""));
+    assert!(html.contains("custom=\"val\""));
+}
+
+#[test]
 fn signed_tampered_token_fails() {
     let inv = crate::model::user::Invitation::new("bob");
     let secret = "test-secret";

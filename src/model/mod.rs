@@ -1,17 +1,21 @@
 use redb::TableDefinition;
 
 pub mod error;
+pub mod html;
 pub mod res;
 pub mod user;
 
 /// pages table definition
 pub const PAGES: TableDefinition<&str, res::ResourceMeta> = TableDefinition::new("pages");
-/// page bodies table definition
-pub const PAGE_BODIES: TableDefinition<&str, res::Markdown> = TableDefinition::new("page_bodies");
+/// page raw markdown table definition
+pub const PAGE_RAW: TableDefinition<&str, res::Markdown> = TableDefinition::new("page_raw");
+/// page rendered html table definition
+pub const PAGE_HTML: TableDefinition<&str, String> = TableDefinition::new("page_html");
+
 /// files table definition
 pub const FILES: TableDefinition<&str, res::ResourceMeta> = TableDefinition::new("files");
-/// file blobs table definition
-pub const FILE_BLOBS: TableDefinition<&str, Vec<u8>> = TableDefinition::new("file_blobs");
+/// file blob table definition
+pub const FILE_BLOB: TableDefinition<&str, Vec<u8>> = TableDefinition::new("file_blob");
 
 /// users table definition
 pub const USERS: TableDefinition<&str, user::User> = TableDefinition::new("users");

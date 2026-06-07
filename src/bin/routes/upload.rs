@@ -8,7 +8,7 @@ use book::crypto::Signed;
 use book::model::res::ResourceMeta;
 use book::model::user::{Session, UserToken};
 use book::model::{AppState, PageContext, error::AppError};
-use book::model::{FILE_BLOBS, FILES};
+use book::model::{FILE_BLOB, FILES};
 use redb::ReadableTable;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -109,7 +109,7 @@ pub async fn file_upload_post(
     files_table.insert(slug.as_str(), meta)?;
     drop(files_table);
 
-    let mut blobs_table = tx.open_table(FILE_BLOBS)?;
+    let mut blobs_table = tx.open_table(FILE_BLOB)?;
     blobs_table.insert(slug.as_str(), data)?;
     drop(blobs_table);
 

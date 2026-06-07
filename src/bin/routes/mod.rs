@@ -33,7 +33,7 @@ use book::CONFIG;
 use book::crypto::Signed;
 use book::model::user::Session;
 use book::model::{AppState, PageContext, error::AppError};
-use book::model::{FILES, PAGES};
+use book::model::{FILES, PAGE_HTML, PAGES};
 use redb::{ReadableDatabase, ReadableTable};
 use std::sync::Arc;
 use time::OffsetDateTime;
@@ -115,8 +115,8 @@ pub async fn view_page(
         ));
     };
 
-    let bodies_table = tx.open_table(book::model::PAGE_BODIES)?;
-    let Some(body) = bodies_table.get(slug.as_str())? else {
+    let html_table = tx.open_table(PAGE_HTML)?;
+    let Some(body) = html_table.get(slug.as_str())? else {
         return Err(AppError::new(
             axum::http::StatusCode::NOT_FOUND,
             format!("page body not found: {slug}"),
@@ -130,7 +130,7 @@ pub async fn view_page(
 
     let page = PageContext::new()
         .insert("page_title", &meta.value().title)
-        .insert("content", &body.value().render())
+        .insert("content", &body.value())
         .insert("user", &user)
         .insert("slug", &slug);
     Ok(Html(page.render("view.html")?))
@@ -170,7 +170,7 @@ pub async fn profile_page(
 // download
 
 use axum::response::IntoResponse;
-use book::model::FILE_BLOBS;
+use book::model::FILE_BLOB;
 
 /// download a file by slug
 pub async fn file_download(
@@ -189,7 +189,7 @@ pub async fn file_download(
     let filename = meta.value().title.clone();
     drop(files_table);
 
-    let blobs_table = tx.open_table(FILE_BLOBS)?;
+    let blobs_table = tx.open_table(FILE_BLOB)?;
     let Some(blob) = blobs_table.get(slug.as_str())? else {
         return Err(AppError::new(
             StatusCode::NOT_FOUND,

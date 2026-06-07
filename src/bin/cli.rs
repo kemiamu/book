@@ -1,5 +1,5 @@
 use book::model::user::User;
-use book::model::{FILE_BLOBS, FILES, PAGE_BODIES, PAGES, USERS};
+use book::model::{FILE_BLOB, FILES, PAGE_HTML, PAGE_RAW, PAGES, USERS};
 use clap::Parser;
 
 #[derive(Parser)]
@@ -29,9 +29,10 @@ fn init_tables() {
     let tx = db.begin_write().unwrap();
     {
         tx.open_table(PAGES).unwrap();
-        tx.open_table(PAGE_BODIES).unwrap();
+        tx.open_table(PAGE_RAW).unwrap();
+        tx.open_table(PAGE_HTML).unwrap();
         tx.open_table(FILES).unwrap();
-        tx.open_table(FILE_BLOBS).unwrap();
+        tx.open_table(FILE_BLOB).unwrap();
         tx.open_table(USERS).unwrap();
     }
     tx.commit().unwrap();

@@ -5,10 +5,10 @@ use axum::response::Html;
 use axum_extra::extract::cookie::CookieJar;
 use book::CONFIG;
 use book::crypto::Signed;
-use book::model::res::{Markdown, ResourceMeta};
-use book::model::{PAGE_BODIES, PAGES};
+use book::model::res::ResourceMeta;
 use book::model::user::{Session, UserToken};
 use book::model::{AppState, PageContext, error::AppError};
+use book::model::{PAGE_HTML, PAGE_RAW, PAGES};
 use redb::{ReadableDatabase, ReadableTable};
 use serde::Deserialize;
 use std::collections::HashSet;
@@ -38,7 +38,7 @@ pub async fn edit_page(
             )
         })?;
 
-        let bodies_table = tx.open_table(PAGE_BODIES)?;
+        let bodies_table = tx.open_table(PAGE_RAW)?;
         let body = bodies_table.get(page_slug.as_str())?.ok_or_else(|| {
             AppError::new(
                 StatusCode::NOT_FOUND,
@@ -113,9 +113,16 @@ pub async fn edit_post(
     pages_table.insert(body.slug.as_str(), meta)?;
     drop(pages_table);
 
-    let mut bodies_table = tx.open_table(PAGE_BODIES)?;
-    bodies_table.insert(body.slug.as_str(), Markdown::new(body.body.clone()))?;
-    drop(bodies_table);
+    let md = book::model::res::Markdown::new(body.body.clone());
+    let html = md.render();
+
+    let mut raw_table = tx.open_table(PAGE_RAW)?;
+    raw_table.insert(body.slug.as_str(), md)?;
+    drop(raw_table);
+
+    let mut html_table = tx.open_table(PAGE_HTML)?;
+    html_table.insert(body.slug.as_str(), html)?;
+    drop(html_table);
 
     tx.commit()?;
 
