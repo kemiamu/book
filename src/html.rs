@@ -284,16 +284,14 @@ where
                 title,
                 id: _,
             }) => {
-                let alt_text = self.raw_text()?;
+                let src = encode_safe(&dest_url);
                 let caption = match title.is_empty() {
-                    true => alt_text.clone(),
-                    false => format!("Figure - {alt_text} ({})", encode_safe(&title)),
+                    true => self.raw_text()?,
+                    false => format!("{} ({})", self.raw_text()?, encode_safe(&title)),
                 };
                 write!(
                     self.writer,
-                    "<figure><img alt=\"{}\" src=\"{}\" /><figcaption>{caption}</figcaption></figure>",
-                    encode_safe(&alt_text),
-                    encode_safe(&dest_url),
+                    "<figure><img src=\"{src}\" /><figcaption>{caption}</figcaption></figure>",
                 )?;
             }
             Event::End(TagEnd::Image) => {}
