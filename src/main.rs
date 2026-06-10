@@ -21,11 +21,10 @@ async fn main() {
         // home
         .route("/", get(routes::home_page))
         // account
-        .route("/sign-in", get(routes::sign_in_page))
-        .route("/sign-in", post(routes::sign_in_post))
-        .route("/sign-up", get(routes::sign_up_page))
-        .route("/sign-up", post(routes::sign_up_post))
-        .route("/sign-out", get(routes::sign_out))
+        .route("/auth", get(routes::auth_page))
+        .route("/auth/sign-in", post(routes::sign_in_post))
+        .route("/auth/sign-up", post(routes::sign_up_post))
+        .route("/auth/sign-out", get(routes::sign_out))
         .route("/profile", get(routes::profile_page))
         // edit / upload
         .route("/edit", get(routes::edit_page))

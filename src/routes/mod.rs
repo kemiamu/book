@@ -6,7 +6,7 @@ use axum_extra::extract::cookie::CookieJar;
 use book::CONFIG;
 use book::crypto::Signed;
 use book::error::AppError;
-use book::model::{AppState, Invitation, PageContext, Session, UserToken};
+use book::model::{AppState, PageContext, Passkey, Session, UserToken};
 use book::model::{ENTRIES, ENTRY_HTML, FILE_BLOB, FILES};
 use redb::{ReadableDatabase, ReadableTable};
 use std::sync::Arc;
@@ -128,22 +128,22 @@ pub async fn profile_page(
         .and_then(|c| Signed::<Session>::parse(c.value(), &CONFIG.secret))
         .map(|s| s.inner.user);
 
-    let invite = Invitation::new(&token?);
-    let invitation = Signed::new(invite.clone());
-    let code = invitation.generate(&CONFIG.secret);
+    let passkey = Passkey::new(&token?);
+    let signed = Signed::new(passkey.clone());
+    let code = signed.generate(&CONFIG.secret);
 
-    let expires_at = OffsetDateTime::from_unix_timestamp(invite.expires_at)
+    let expires_at = OffsetDateTime::from_unix_timestamp(passkey.expires_at)
         .ok()
         .and_then(|d| d.format(&Iso8601::DATE).ok())
         .unwrap_or_default();
 
-    let invite_url = format!("{}/sign-up?invite={}", CONFIG.base_url, code);
+    let passkey_url = format!("{}/auth?passkey={}", CONFIG.base_url, code);
 
     let page = PageContext::new()
         .insert("page_title", "Profile")
         .insert("user", &user)
-        .insert("invite_url", &invite_url)
-        .insert("invite_code_expiry", &expires_at);
+        .insert("passkey_url", &passkey_url)
+        .insert("passkey_code_expiry", &expires_at);
     Ok(Html(page.render("profile.html")?))
 }
 

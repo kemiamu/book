@@ -152,42 +152,42 @@ impl User {
     }
 }
 
-// invite
+// passkey
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-/// sign-up invitation token
-pub struct Invitation {
-    pub inviter: String,
+/// authorization passkey token
+pub struct Passkey {
+    pub creator: String,
     pub expires_at: i64,
 }
 
-impl Invitation {
-    pub const EXPIRY_SECS: i64 = 7 * 24 * 60 * 60;
+impl Passkey {
+    pub const EXPIRY_SECS: i64 = 3 * 24 * 60 * 60;
 
-    /// create a new invitation
-    pub fn new(inviter: impl Into<String>) -> Self {
+    /// create a new passkey
+    pub fn new(creator: impl Into<String>) -> Self {
         let now = time::UtcDateTime::now().unix_timestamp();
         Self {
-            inviter: inviter.into(),
+            creator: creator.into(),
             expires_at: now + Self::EXPIRY_SECS,
         }
     }
 }
 
-impl Signable for Invitation {
-    /// invitation type tag
+impl Signable for Passkey {
+    /// passkey type tag
     fn tag() -> &'static str {
-        "invitation"
+        "passkey"
     }
-    /// check if invitation is not expired
+    /// check if passkey is not expired
     fn is_valid(&self) -> bool {
         self.expires_at >= time::UtcDateTime::now().unix_timestamp()
     }
-    /// serialize invitation to bytes
+    /// serialize passkey to bytes
     fn serialize(&self) -> Vec<u8> {
         postcard::to_stdvec(self).unwrap()
     }
-    /// deserialize invitation from bytes
+    /// deserialize passkey from bytes
     fn deserialize(bytes: &[u8]) -> Option<Self> {
         postcard::from_bytes(bytes).ok()
     }

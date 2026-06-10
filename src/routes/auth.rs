@@ -10,29 +10,33 @@ use book::crypto::Signed;
 use book::error::AppError;
 use book::model::PageContext;
 use book::model::USERS;
-use book::model::{AppState, Invitation, Session, User};
+use book::model::{AppState, Passkey, Session, User};
 use redb::ReadableDatabase;
 use redb::ReadableTable;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-/// show sign-in page
-pub async fn sign_in_page(jar: CookieJar) -> Result<Html<String>, AppError> {
-    let user = jar
-        .get("session")
-        .and_then(|c| Signed::<Session>::parse(c.value(), &CONFIG.secret))
-        .map(|s| s.inner.user);
+/// show auth page (login + register unified)
+pub async fn auth_page(
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Html<String>, AppError> {
+    let code = params.get("passkey").cloned().unwrap_or_default();
+    let valid = Signed::<Passkey>::parse(&code, &CONFIG.secret).is_some();
 
     let page = PageContext::new()
-        .insert("page_title", "Sign In")
-        .insert("user", &user);
-    Ok(Html(page.render("sign-in.html")?))
+        .insert("page_title", "Authorization")
+        .insert("passkey", &code)
+        .insert("passkey_valid", &valid);
+    Ok(Html(page.render("auth.html")?))
 }
+
+// sign in
 
 #[derive(Deserialize)]
 /// sign-in form payload
 pub struct SignInForm {
+    pub passkey: String,
     pub username: String,
     pub password: String,
 }
@@ -43,6 +47,9 @@ pub async fn sign_in_post(
     State(state): State<Arc<AppState>>,
     Json(body): Json<SignInForm>,
 ) -> Result<(CookieJar, Json<serde_json::Value>), (StatusCode, Json<serde_json::Value>)> {
+    let _passkey = Signed::<Passkey>::parse(&body.passkey, &CONFIG.secret)
+        .ok_or_else(|| err(StatusCode::UNAUTHORIZED, "Invalid or expired passkey"))?;
+
     let tx = state.db.begin_read().map_err(internal_error)?;
     let table = tx.open_table(USERS).map_err(internal_error)?;
 
@@ -65,31 +72,12 @@ pub async fn sign_in_post(
 
 // sign up
 
-/// show sign-up page
-pub async fn sign_up_page(
-    jar: CookieJar,
-    Query(params): Query<HashMap<String, String>>,
-) -> Result<Html<String>, AppError> {
-    let user = jar
-        .get("session")
-        .and_then(|c| Signed::<Session>::parse(c.value(), &CONFIG.secret))
-        .map(|s| s.inner.user);
-
-    let invite = params.get("invite").cloned();
-
-    let page = PageContext::new()
-        .insert("page_title", "Sign Up")
-        .insert("invite", &invite)
-        .insert("user", &user);
-    Ok(Html(page.render("sign-up.html")?))
-}
-
 #[derive(Deserialize)]
 /// sign-up form payload
 pub struct SignUpForm {
+    pub passkey: String,
     pub username: String,
     pub password: String,
-    pub invite: String,
 }
 
 /// handle sign-up form submission
@@ -98,8 +86,8 @@ pub async fn sign_up_post(
     State(state): State<Arc<AppState>>,
     Json(body): Json<SignUpForm>,
 ) -> Result<(CookieJar, Json<serde_json::Value>), (StatusCode, Json<serde_json::Value>)> {
-    let invitation = Signed::<Invitation>::parse(&body.invite, &CONFIG.secret)
-        .ok_or_else(|| err(StatusCode::BAD_REQUEST, "Invalid or expired invite code"))?;
+    let passkey = Signed::<Passkey>::parse(&body.passkey, &CONFIG.secret)
+        .ok_or_else(|| err(StatusCode::UNAUTHORIZED, "Invalid or expired passkey"))?;
 
     let tx = state.db.begin_write().map_err(internal_error)?;
     let mut table = tx.open_table(USERS).map_err(internal_error)?;
@@ -112,7 +100,7 @@ pub async fn sign_up_post(
         return Err(err(StatusCode::CONFLICT, "Username already exists"));
     }
 
-    let user = User::new(&body.password, &CONFIG.secret, invitation.inner.inviter);
+    let user = User::new(&body.password, &CONFIG.secret, passkey.inner.creator);
     table
         .insert(body.username.as_str(), user)
         .map_err(internal_error)?;

@@ -39,25 +39,25 @@ fn session_expiry() {
 }
 
 #[test]
-fn invitation_roundtrip() {
-    let inv = crate::model::Invitation::new("alice");
-    let bytes = inv.serialize();
-    let restored = crate::model::Invitation::deserialize(&bytes).unwrap();
-    assert_eq!(restored.inviter, "alice");
-    assert_eq!(restored.expires_at, inv.expires_at);
+fn passkey_roundtrip() {
+    let pk = crate::model::Passkey::new("alice");
+    let bytes = pk.serialize();
+    let restored = crate::model::Passkey::deserialize(&bytes).unwrap();
+    assert_eq!(restored.creator, "alice");
+    assert_eq!(restored.expires_at, pk.expires_at);
 }
 
 #[test]
 fn signed_generate_and_parse() {
-    let inv = crate::model::Invitation::new("bob");
+    let pk = crate::model::Passkey::new("bob");
     let secret = "test-secret";
 
-    let signed = Signed::new(inv);
+    let signed = Signed::new(pk);
     let token = signed.generate(secret);
 
-    let parsed = Signed::<crate::model::Invitation>::parse(&token, secret);
+    let parsed = Signed::<crate::model::Passkey>::parse(&token, secret);
     assert!(parsed.is_some());
-    assert_eq!(parsed.unwrap().inner.inviter, "bob");
+    assert_eq!(parsed.unwrap().inner.creator, "bob");
 }
 
 #[test]
@@ -71,10 +71,10 @@ fn heading_attributes_parsed() {
 
 #[test]
 fn signed_tampered_token_fails() {
-    let inv = crate::model::Invitation::new("bob");
+    let pk = crate::model::Passkey::new("bob");
     let secret = "test-secret";
 
-    let signed = Signed::new(inv);
+    let signed = Signed::new(pk);
     let token = signed.generate(secret);
 
     let (data_hex, sig_hex) = token.rsplit_once('.').unwrap();
@@ -82,6 +82,6 @@ fn signed_tampered_token_fails() {
     sig_bytes[0] ^= 0x01;
     let tampered = format!("{}.{}", data_hex, hex::encode(sig_bytes));
 
-    let parsed = Signed::<crate::model::Invitation>::parse(&tampered, secret);
+    let parsed = Signed::<crate::model::Passkey>::parse(&tampered, secret);
     assert!(parsed.is_none());
 }
