@@ -64,6 +64,7 @@ function editApp() {
       data-body="{{ body }}"
       data-error="{{ error }}"
     >
+      {% if slug | length == 0 %}
       <div class="field">
         <label class="label" for="slug">Slug (URL name)</label>
         <div class="control">
@@ -76,10 +77,8 @@ function editApp() {
             placeholder="my-page-slug"
           />
         </div>
-        <p class="help">
-          Used in URL: /<strong x-text="slug||'...'"></strong>/README.md
-        </p>
       </div>
+      {% endif %}
       {{ form::input(label="Title", id="title", model="title", required=true, placeholder="Page title") }}
       {{ form::textarea(label="Body (Markdown)", id="body", model="body", placeholder="Write content in Markdown...") }}
       {% if slug | length > 0 %}
