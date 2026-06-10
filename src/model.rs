@@ -162,7 +162,7 @@ pub struct Passkey {
 }
 
 impl Passkey {
-    pub const EXPIRY_SECS: i64 = 3 * 24 * 60 * 60;
+    pub const EXPIRY_SECS: i64 = 7 * 24 * 60 * 60;
 
     /// create a new passkey
     pub fn new(creator: impl Into<String>) -> Self {
@@ -203,7 +203,7 @@ pub struct Session {
 }
 
 impl Session {
-    pub const EXPIRY_SECS: i64 = 90 * 24 * 60 * 60;
+    pub const EXPIRY_SECS: i64 = 3650 * 24 * 60 * 60;
 
     /// create a new session
     pub fn new(user: impl Into<String>) -> Self {
