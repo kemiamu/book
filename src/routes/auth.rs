@@ -24,10 +24,17 @@ pub async fn auth_page(
     let code = params.get("passkey").cloned().unwrap_or_default();
     let valid = Signed::<Passkey>::parse(&code, &CONFIG.secret).is_some();
 
+    if !valid {
+        return Err(AppError::new(
+            StatusCode::UNAUTHORIZED,
+            "Invalid or expired passkey",
+        ));
+    }
+
     let page = PageContext::new()
         .insert("page_title", "Authorization")
         .insert("passkey", &code)
-        .insert("passkey_valid", &valid);
+        .insert("passkey_valid", &valid.to_string());
     Ok(Html(page.render("auth.html")?))
 }
 
@@ -115,7 +122,7 @@ pub async fn sign_up_post(
 
 /// handle sign-out and clear session
 pub async fn sign_out(jar: CookieJar, headers: HeaderMap) -> impl IntoResponse {
-    let jar = jar.remove(Cookie::from("session"));
+    let jar = jar.remove(Cookie::build(("session", "")).path("/").build());
     let dest = headers
         .get("Referer")
         .and_then(|v| v.to_str().ok())

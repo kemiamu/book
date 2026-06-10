@@ -1,6 +1,9 @@
-use book::model::User;
+use book::crypto::Signed;
 use book::model::{ENTRIES, ENTRY_HTML, ENTRY_RAW, FILE_BLOB, FILES, USERS};
+use book::model::{Passkey, User};
 use clap::Parser;
+use time::OffsetDateTime;
+use time::format_description::well_known::Iso8601;
 
 #[derive(Parser)]
 #[command(name = "cli")]
@@ -14,13 +17,33 @@ enum Cli {
         /// Password for the new user
         password: String,
     },
+    /// Generate a passkey
+    GenPasskey,
 }
 
 fn main() {
     match Cli::parse() {
         Cli::InitTables => init_tables(),
         Cli::InitUser { username, password } => init_user(&username, &password),
+        Cli::GenPasskey => gen_passkey(""),
     }
+}
+
+fn gen_passkey(creator: &str) {
+    let passkey = Passkey::new(creator);
+    let signed = Signed::new(passkey.clone());
+    let code = signed.generate(&book::CONFIG.secret);
+
+    let expires_at = OffsetDateTime::from_unix_timestamp(passkey.expires_at)
+        .ok()
+        .and_then(|d| d.format(&Iso8601::DATE).ok())
+        .unwrap_or_default();
+
+    let url = format!("{}/auth?passkey={}", book::CONFIG.base_url, code);
+    println!("Passkey for '{}':", creator);
+    println!("  Code:    {}", &code[..32]);
+    println!("  URL:     {url}");
+    println!("  Expires: {expires_at}");
 }
 
 fn init_tables() {

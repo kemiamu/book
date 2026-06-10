@@ -1,46 +1,42 @@
 {% import "macros/_form.html" as form %}
 {% import "macros/_notification.html" as notify %}
 {% extends "_base.html" %}
-{% block title %}Auth - {{ site_title }}{% endblock title %}
+{% block title %}Authorization - {{ site_title }}{% endblock title %}
 {% block head %}
 <script defer>
 function authApp() {
   return {
-    mode: "sign-in",
+    page: "landing",
     passkey: "{{ passkey | safe }}",
-    passkeyValid: {{ passkey_valid | default(value=false) | lower }},
     username: "",
     password: "",
     confirm: "",
     error: "",
     loading: false,
-    get title() {
-      return this.mode === "sign-in" ? "Sign In" : "Create Account";
-    },
     get btnText() {
-      return this.mode === "sign-in" ? "Sign In" : "Create Account";
+      return this.page === "sign-in" ? "Sign In" : "Create Account";
     },
-    get altText() {
-      return this.mode === "sign-in"
-        ? "Don't have an account?"
-        : "Already have an account?";
+    goSignIn() {
+      this.page = "sign-in";
+      this.error = "";
     },
-    get altLink() {
-      return this.mode === "sign-in" ? "Create one" : "Sign in";
+    goSignUp() {
+      this.page = "sign-up";
+      this.error = "";
     },
-    switchMode() {
-      this.mode = this.mode === "sign-in" ? "sign-up" : "sign-in";
+    goBack() {
+      this.page = "landing";
       this.error = "";
     },
     async submit() {
       this.error = "";
-      if (this.mode === "sign-up" && this.password !== this.confirm) {
+      if (this.page === "sign-up" && this.password !== this.confirm) {
         this.error = "Passwords do not match";
         return;
       }
       this.loading = true;
       try {
-        const endpoint = this.mode === "sign-in" ? "/auth/sign-in" : "/auth/sign-up";
+        const endpoint = this.page === "sign-in" ? "/auth/sign-in" : "/auth/sign-up";
         const body = {
           passkey: this.passkey,
           username: this.username,
@@ -70,67 +66,62 @@ function authApp() {
 <section class="section is-medium">
   <div class="container">
     <div class="columns is-centered">
-      <div class="column is-half">
-        <div class="block has-text-centered">
-          <h1 class="title is-4">Authentication</h1>
-        </div>
-
-        <template x-if="passkeyValid">
-          <div class="notification is-success is-light">
-            <p class="has-text-weight-bold">&#10003; Valid Passkey</p>
-            <p style="word-break: break-all" x-text="passkey"></p>
-            <p class="is-size-7 has-text-grey mt-1">Keep this passkey safe. It is the key to accessing this site.</p>
+      <div class="column is-half" x-data="authApp()">
+        <template x-if="page === 'landing'">
+          <div>
+            <div class="block has-text-centered">
+              <h1 class="title is-3">Authorization</h1>
+            </div>
+            <div class="notification is-info">
+              <p class="has-text-weight-bold">&#10003; Valid Passkey provided</p>
+              <p class="mt-2">This is an important credential. Keep it secure and do not share it with untrusted parties.</p>
+            </div>
+            <div class="block mt-5">
+              <p class="has-text-centered has-text-grey mb-4">Select an action below to proceed:</p>
+              <div class="buttons is-centered">
+                <a class="button" x-on:click="goSignIn">Sign In</a>
+                <a class="button" x-on:click="goSignUp">Create Account</a>
+              </div>
+            </div>
           </div>
         </template>
-        <template x-if="!passkeyValid && passkey">
-          <div class="notification is-danger is-light">
-            <p class="has-text-weight-bold">&#10007; Invalid Passkey</p>
-            <p style="word-break: break-all" x-text="passkey"></p>
+
+        <template x-if="page !== 'landing'">
+          <div>
+            <div class="block has-text-centered">
+              <h1 class="title is-4" x-text="btnText"></h1>
+            </div>
+            <div class="card">
+              <div class="card-content">
+                <form x-on:submit.prevent="submit">
+                  <input type="hidden" name="passkey" :value="passkey" />
+
+                  {{ form::input(label="Username", id="username", model="username", required=true, placeholder="Your username", autocomplete="username") }}
+                  {{ form::input(label="Password", id="password", model="password", required=true, placeholder="Your password", type="password", autocomplete="current-password") }}
+                  <template x-if="page === 'sign-up'">
+                    {{ form::input(label="Confirm Password", id="confirm", model="confirm", required=true, placeholder="Repeat password", type="password", autocomplete="new-password") }}
+                  </template>
+                  {{ notify::error_notification() }}
+                  <div class="field">
+                    <div class="control">
+                      <button
+                        class="button is-primary is-fullwidth"
+                        type="submit"
+                        :class="{'is-loading':loading}"
+                        :disabled="loading"
+                        x-text="btnText"
+                      ></button>
+                    </div>
+                  </div>
+
+                  <div class="has-text-centered mt-2">
+                    <a x-on:click.prevent="goBack" class="has-text-grey-light">&larr; Back</a>
+                  </div>
+                </form>
+              </div>
+            </div>
           </div>
         </template>
-
-        <div class="card">
-          <div class="card-content">
-            <form x-data="authApp()" x-on:submit.prevent="submit">
-              <div class="tabs is-centered is-boxed is-medium mb-4">
-                <ul>
-                  <li :class="{'is-active': mode === 'sign-in'}">
-                    <a x-on:click.prevent="switchMode()">Sign In</a>
-                  </li>
-                  <li :class="{'is-active': mode === 'sign-up'}">
-                    <a x-on:click.prevent="switchMode()">Sign Up</a>
-                  </li>
-                </ul>
-              </div>
-
-              <template x-if="!passkeyValid">
-                {{ form::input(label="Passkey", id="passkey", model="passkey", required=true, placeholder="Enter your passkey", autocomplete="off") }}
-              </template>
-              <template x-if="passkeyValid">
-                <input type="hidden" name="passkey" x-model="passkey" />
-              </template>
-
-              {{ form::input(label="Username", id="username", model="username", required=true, placeholder="Your username", autocomplete="username") }}
-              {{ form::input(label="Password", id="password", model="password", required=true, placeholder="Your password", type="password", autocomplete="current-password") }}
-              <template x-if="mode === 'sign-up'">
-                {{ form::input(label="Confirm Password", id="confirm", model="confirm", required=true, placeholder="Repeat password", type="password", autocomplete="new-password") }}
-              </template>
-              {{ notify::error_notification() }}
-              <div class="field">
-                <div class="control">
-                  <button
-                    class="button is-primary is-fullwidth"
-                    type="submit"
-                    :class="{'is-loading':loading}"
-                    :disabled="loading"
-                    x-text="btnText"
-                  ></button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-
       </div>
     </div>
   </div>
