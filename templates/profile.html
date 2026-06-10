@@ -18,8 +18,7 @@
       <h2 class="title is-5">Passkey Link</h2>
       <div class="block">
         <p class="has-text-grey">
-          A passkey is generated each time you visit this page. It expires in 7 days and cannot be revoked or restricted during its validity.
-        </p>
+          Passkey is a privileged credential that grants the holder permission to pass authentication. This credential is valid for 7 days and cannot be revoked.        </p>
       </div>
       <div class="block">
         <div class="buttons">
@@ -41,8 +40,7 @@
         <div class="block">
           <div class="notification is-warning is-block">
             <p>
-              This link is valid until {{ passkey_code_expiry }}. It cannot be revoked, and anyone with it can access this site.
-            </p>
+              Valid until {{ passkey_code_expiry }} and <strong>cannot be revoked</strong>. Anyone in possession of this credential may pass authentication. Please keep it secure.            </p>
             <p class="block"><a class="has-text-weight-bold" style="word-break: break-all" :href="passkeyUrl" x-text="passkeyUrl"></a></p>
           </div>
           <template x-if="copied">
