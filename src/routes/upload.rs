@@ -9,7 +9,6 @@ use book::error::AppError;
 use book::model::FileMeta;
 use book::model::{AppState, PageContext, Session, UserToken};
 use book::model::{FILE_BLOB, FILES};
-use redb::ReadableTable;
 use serde::Deserialize;
 use std::sync::Arc;
 
@@ -109,13 +108,6 @@ pub async fn file_upload_post(
 
     let mut files_table = tx.open_table(FILES)?;
     let key = (entry_slug.as_str(), file_slug.as_str());
-    if files_table.get(key)?.is_some() {
-        return Err(AppError::new(
-            StatusCode::CONFLICT,
-            format!("A file with slug '{file_slug}' already exists in entry '{entry_slug}'"),
-        ));
-    }
-
     let meta = FileMeta::new(&username);
     files_table.insert(key, meta)?;
     drop(files_table);
