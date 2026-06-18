@@ -1,6 +1,6 @@
 use crate::model::PageContext;
 use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
+use axum::response::{Html, IntoResponse, Response};
 
 type BoxErr = Box<dyn std::error::Error + Send + Sync>;
 
@@ -39,7 +39,7 @@ impl IntoResponse for AppError {
             .insert("message", &self.inner.to_string())
             .render("error.html")
             .unwrap();
-        (self.status, html).into_response()
+        (self.status, Html(html)).into_response()
     }
 }
 
