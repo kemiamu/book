@@ -7,7 +7,7 @@ use book::CONFIG;
 use book::crypto::Signed;
 use book::error::AppError;
 use book::model::{AppState, PageContext, Passkey, Session, UserToken};
-use book::model::{ENTRIES, ENTRY_HTML, FILE_BLOB, FILES};
+use book::model::{ENTRIES, ENTRY_HTML, ENTRY_RAW, FILE_BLOB, FILES};
 use redb::{ReadableDatabase, ReadableTable};
 use std::sync::Arc;
 use time::OffsetDateTime;
@@ -20,6 +20,66 @@ mod upload;
 pub use auth::*;
 pub use edit::*;
 pub use upload::*;
+
+// delete
+
+/// delete an entry and all its files
+pub async fn entry_delete(
+    UserToken(token): UserToken,
+    State(state): State<Arc<AppState>>,
+    Path(slug): Path<String>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let _username = token?;
+    let tx = state.db.begin_write()?;
+
+    // collect all file keys for this entry
+    let files_to_remove: Vec<(String, String)> = {
+        let files_table = tx.open_table(FILES)?;
+        let mut keys = Vec::new();
+        for result in files_table.iter()? {
+            let (key, _) = result?;
+            let (entry, file) = key.value();
+            if entry == slug.as_str() {
+                keys.push((entry.to_string(), file.to_string()));
+            }
+        }
+        keys
+    };
+
+    // remove file blobs
+    {
+        let mut blobs_table = tx.open_table(FILE_BLOB)?;
+        for (entry, file) in &files_to_remove {
+            blobs_table.remove((entry.as_str(), file.as_str()))?;
+        }
+    }
+
+    // remove file metadata
+    {
+        let mut files_table = tx.open_table(FILES)?;
+        for (entry, file) in &files_to_remove {
+            files_table.remove((entry.as_str(), file.as_str()))?;
+        }
+    }
+
+    // remove entry data from all tables
+    {
+        let mut entries_table = tx.open_table(ENTRIES)?;
+        entries_table.remove(slug.as_str())?;
+    }
+    {
+        let mut raw_table = tx.open_table(ENTRY_RAW)?;
+        raw_table.remove(slug.as_str())?;
+    }
+    {
+        let mut html_table = tx.open_table(ENTRY_HTML)?;
+        html_table.remove(slug.as_str())?;
+    }
+
+    tx.commit()?;
+
+    Ok(Json(serde_json::json!({"redirect": "/"})))
+}
 
 // util
 
