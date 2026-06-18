@@ -12,10 +12,10 @@
           {% if user %}
           <li><a href="/edit" class="has-text-grey">New Entry</a></li>
           <li><a href="/profile" class="has-text-grey">Profile</a></li>
-          <li><a href="/auth/sign-out" class="has-text-grey" x-data="{ confirm: false }" @click.prevent="if (confirm) { window.location.href = '/auth/sign-out' } else { confirm = true; setTimeout(() => confirm = false, 3000) }" x-text="confirm ? 'Confirm Sign Out?' : 'Sign Out'"></a></li>
+          <li><a href="/auth/sign-out" :class="confirm ? 'has-text-danger' : 'has-text-grey'" x-data="{ confirm: false }" @click.prevent="if (confirm) { window.location.href = '/auth/sign-out' } else { confirm = true; setTimeout(() => confirm = false, 3000) }" x-text="confirm ? 'Confirm Sign Out?' : 'Sign Out'"></a></li>
           {% endif %}
           {% if user and entry_slug %}
-          <li><a href="#" class="has-text-grey" x-data="{ confirm: false }" @click.prevent="if (confirm) { deleteEntry('{{ entry_slug }}') } else { confirm = true; setTimeout(() => confirm = false, 3000) }" x-text="confirm ? 'Confirm Delete?' : 'Delete This Entry'"></a></li>
+          <li><a href="#" :class="confirm ? 'has-text-danger' : 'has-text-grey'" x-data="{ confirm: false }" @click.prevent="if (confirm) { deleteEntry('{{ entry_slug }}') } else { confirm = true; setTimeout(() => confirm = false, 3000) }" x-text="confirm ? 'Confirm Delete?' : 'Delete This Entry'"></a></li>
           {% endif %}
         </ul>
       </div>
