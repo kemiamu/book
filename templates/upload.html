@@ -12,7 +12,6 @@ function uploadApp() {
     fileName: "",
     error: "",
     loading: false,
-    _entrySlugEdited: false,
     _fileSlugEdited: false,
     init() {
       const el = this.$el;
@@ -26,9 +25,6 @@ function uploadApp() {
       this.file = f;
       this.fileName = f.name;
       if (!this._fileSlugEdited) this.fileSlug = f.name;
-    },
-    markEntrySlugEdited() {
-      this._entrySlugEdited = true;
     },
     markFileSlugEdited() {
       this._fileSlugEdited = true;
@@ -66,16 +62,6 @@ function uploadApp() {
   <div class="container container-narrow">
     <h1 class="title">Upload File to Entry</h1>
     <form x-data="uploadApp()" x-on:submit.prevent="submit" data-entry="{{ default_entry | default(value="") }}">
-      {% if default_entry %}
-      <div class="field">
-        <label class="label">Entry Slug</label>
-        <div class="control">
-          <p class="text-bold" style="word-break: break-all">{{ default_entry }}</p>
-        </div>
-      </div>
-      {% else %}
-      {{ form::input(label="Entry Slug", id="entry_slug", model="entrySlug", required=true, placeholder="my-entry", extra_attr='x-on:input="markEntrySlugEdited"') }}
-      {% endif %}
       {{ form::input(label="File Slug", id="file_slug", model="fileSlug", required=true, placeholder="image.png", extra_attr='x-on:input="markFileSlugEdited"') }}
       <div class="field">
         <label class="label">File</label>

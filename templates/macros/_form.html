@@ -39,7 +39,7 @@
     :disabled="loading"
     :class="{'btn-loading':loading}"
   >
-    <span x-text="loading?'{{ loading_text }}':'{{ submit_text }}'"></span>
+    <span x-text="loading?'{{ loading_text }}':'{{ submit_text }}'">{{ submit_text }}</span>
   </button>
   <a class="btn" href="{{ cancel_url }}">Cancel</a>
 </div>

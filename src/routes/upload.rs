@@ -1,7 +1,7 @@
 use axum::Json;
 use axum::extract::{Multipart, Query, State};
 use axum::http::StatusCode;
-use axum::response::Html;
+use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum_extra::extract::cookie::CookieJar;
 use book::CONFIG;
 use book::crypto::Signed;
@@ -22,7 +22,12 @@ pub async fn file_upload_page(
     _token: UserToken,
     jar: CookieJar,
     Query(params): Query<UploadQuery>,
-) -> Result<Html<String>, AppError> {
+) -> Result<Response, AppError> {
+    // uploads are always bound to an entry, so a bare /upload has no target
+    let Some(entry) = params.entry else {
+        return Ok(Redirect::to("/").into_response());
+    };
+
     let user = jar
         .get("session")
         .and_then(|c| Signed::<Session>::parse(c.value(), &CONFIG.secret))
@@ -30,8 +35,8 @@ pub async fn file_upload_page(
     let page = PageContext::new()
         .insert("page_title", "Upload File")
         .insert("user", &user)
-        .insert("default_entry", &params.entry);
-    Ok(Html(page.render("upload.html")?))
+        .insert("default_entry", &entry);
+    Ok(Html(page.render("upload.html")?).into_response())
 }
 
 /// handle file upload
