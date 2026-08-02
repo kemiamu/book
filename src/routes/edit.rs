@@ -93,17 +93,19 @@ pub async fn edit_post(
             "Slug must not be empty",
         ));
     }
-    if body.title.is_empty() {
-        return Err(AppError::new(
-            StatusCode::BAD_REQUEST,
-            "Title must not be empty",
-        ));
-    }
+
+    // a fresh entry can be created with just a slug; fall back to the slug
+    // as the title until a real one is provided
+    let title = if body.title.is_empty() {
+        body.slug.as_str()
+    } else {
+        body.title.as_str()
+    };
 
     let mut entries_table = tx.open_table(ENTRIES)?;
     let existing = entries_table.get(body.slug.as_str())?.map(|g| g.value());
     let meta = EntryMeta::new(
-        &body.title,
+        title,
         &username,
         existing.map(|m| m.tags).unwrap_or_default(),
     );
