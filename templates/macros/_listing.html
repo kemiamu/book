@@ -6,7 +6,7 @@
       {% for item in items %}
       {% if not loop.first %}<li class="entry-sep" aria-hidden="true"></li>{% endif %}
       <li class="entry-item">
-        <a class="entry-link" href="/{{ item.name }}/README.md">{{ item.title }}</a>
+        <a class="entry-link" href="/{{ item.name }}/README.md"><span class="entry-title">{{ item.title }}</span></a>
       </li>
       {% endfor %}
     </ol>
