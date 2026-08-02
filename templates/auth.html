@@ -63,24 +63,24 @@ function authApp() {
 </script>
 {% endblock head %}
 {% block body %}
-<section class="section is-medium">
+<section class="section">
   <div class="container">
-    <div class="columns is-centered">
-      <div class="column is-half" x-data="authApp()">
+    <div class="auth-wrap">
+      <div class="auth-card" x-data="authApp()">
         <template x-if="page === 'landing'">
           <div>
-            <div class="block has-text-centered">
-              <h1 class="title is-3">Authorization</h1>
+            <div class="text-center">
+              <h1 class="title">Authorization</h1>
             </div>
-            <div class="notification is-info">
-              <p class="has-text-weight-bold">&#10003; Valid Passkey provided</p>
-              <p class="mt-2">This is an important credential. Keep it secure and do not share it with untrusted parties.</p>
+            <div class="notice notice-info">
+              <p class="text-bold">&#10003; Valid Passkey provided</p>
+              <p>This is an important credential. Keep it secure and do not share it with untrusted parties.</p>
             </div>
-            <div class="block mt-5">
-              <p class="has-text-centered has-text-grey mb-4">Select an action below to proceed:</p>
-              <div class="buttons is-centered">
-                <a class="button" x-on:click="goSignIn">Sign In</a>
-                <a class="button" x-on:click="goSignUp">Create Account</a>
+            <div class="block">
+              <p class="text-center text-muted mb-4">Select an action below to proceed:</p>
+              <div class="btn-group btn-group-center">
+                <a class="btn" x-on:click="goSignIn">Sign In</a>
+                <a class="btn" x-on:click="goSignUp">Create Account</a>
               </div>
             </div>
           </div>
@@ -88,11 +88,11 @@ function authApp() {
 
         <template x-if="page !== 'landing'">
           <div>
-            <div class="block has-text-centered">
-              <h1 class="title is-4" x-text="btnText"></h1>
+            <div class="text-center">
+              <h1 class="title" x-text="btnText"></h1>
             </div>
             <div class="card">
-              <div class="card-content">
+              <div class="card-body">
                 <form x-on:submit.prevent="submit">
                   <input type="hidden" name="passkey" :value="passkey" />
 
@@ -103,19 +103,17 @@ function authApp() {
                   </template>
                   {{ notify::error_notification() }}
                   <div class="field">
-                    <div class="control">
-                      <button
-                        class="button is-primary is-fullwidth"
-                        type="submit"
-                        :class="{'is-loading':loading}"
-                        :disabled="loading"
-                        x-text="btnText"
-                      ></button>
-                    </div>
+                    <button
+                      class="btn btn-primary btn-block"
+                      type="submit"
+                      :class="{'btn-loading':loading}"
+                      :disabled="loading"
+                      x-text="btnText"
+                    ></button>
                   </div>
 
-                  <div class="has-text-centered mt-2">
-                    <a x-on:click.prevent="goBack" class="has-text-grey-light">&larr; Back</a>
+                  <div class="text-center mt-2">
+                    <a x-on:click.prevent="goBack" class="text-faint">&larr; Back</a>
                   </div>
                 </form>
               </div>

@@ -1,16 +1,14 @@
 {% macro listing(title, items, type) %}
 <section class="section">
-  <div class="container is-max-desktop">
-    <div class="menu">
-      <p class="menu-label">{{ title }}</p>
-      <ul class="menu-list">
-        {% for item in items %}
-        <li>
-          <a href="/{{ item.name }}/README.md">{{ item.title }}</a>
-        </li>
-        {% endfor %}
-      </ul>
-    </div>
+  <div class="container container-narrow">
+    <h2 class="list-title">{{ title }}</h2>
+    <ol class="entry-list">
+      {% for item in items %}
+      <li class="entry-item">
+        <a class="entry-link" href="/{{ item.name }}/README.md">{{ item.title }}</a>
+      </li>
+      {% endfor %}
+    </ol>
   </div>
 </section>
 {% endmacro listing %}

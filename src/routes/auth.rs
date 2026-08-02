@@ -39,6 +39,8 @@ pub async fn auth_page(
 }
 
 // sign in
+//
+// ++++++++++++============++++++++++++============++++++++++++============
 
 #[derive(Deserialize)]
 /// sign-in form payload
@@ -78,6 +80,8 @@ pub async fn sign_in_post(
 }
 
 // sign up
+//
+// ++++++++++++============++++++++++++============++++++++++++============
 
 #[derive(Deserialize)]
 /// sign-up form payload
@@ -119,6 +123,8 @@ pub async fn sign_up_post(
 }
 
 // sign out
+//
+// ++++++++++++============++++++++++++============++++++++++++============
 
 /// handle sign-out and clear session
 pub async fn sign_out(jar: CookieJar, headers: HeaderMap) -> impl IntoResponse {
@@ -131,6 +137,8 @@ pub async fn sign_out(jar: CookieJar, headers: HeaderMap) -> impl IntoResponse {
 }
 
 // helper
+//
+// ++++++++++++============++++++++++++============++++++++++++============
 
 /// set session cookie on the jar
 fn set_session_cookie(jar: CookieJar, username: impl AsRef<str>, secret: &str) -> CookieJar {

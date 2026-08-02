@@ -62,15 +62,15 @@ function uploadApp() {
 </script>
 {% endblock head %}
 {% block body %}
-<section class="section is-medium">
-  <div class="container is-max-desktop">
-    <h1 class="title is-4">Upload File to Entry</h1>
+<section class="section">
+  <div class="container container-narrow">
+    <h1 class="title">Upload File to Entry</h1>
     <form x-data="uploadApp()" x-on:submit.prevent="submit" data-entry="{{ default_entry | default(value="") }}">
       {% if default_entry %}
       <div class="field">
         <label class="label">Entry Slug</label>
         <div class="control">
-          <p class="has-text-weight-bold" style="word-break: break-all">{{ default_entry }}</p>
+          <p class="text-bold" style="word-break: break-all">{{ default_entry }}</p>
         </div>
       </div>
       {% else %}
@@ -79,18 +79,16 @@ function uploadApp() {
       {{ form::input(label="File Slug", id="file_slug", model="fileSlug", required=true, placeholder="image.png", extra_attr='x-on:input="markFileSlugEdited"') }}
       <div class="field">
         <label class="label">File</label>
-        <div class="file has-name is-fullwidth">
-          <label class="file-label">
+        <div class="file-upload">
+          <label class="file-upload-label">
             <input
-              class="file-input"
+              class="file-upload-input"
               type="file"
               x-on:change="onFileSelect"
               x-ref="fileInput"
             />
-            <span class="file-cta">
-              <span class="file-label">Choose a file…</span>
-            </span>
-            <span class="file-name" x-text="fileName || ''"></span>
+            <span class="file-upload-cta">Choose a file…</span>
+            <span class="file-upload-name" x-text="fileName || ''"></span>
           </label>
         </div>
       </div>

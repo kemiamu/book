@@ -2,13 +2,13 @@
 {% extends "_base.html" %}
 {% block title %}{{ code }} - {{ site_title }}{% endblock title %}
 {% block body %}
-<section class="section is-medium">
+<section class="section">
   <div class="container">
-    <div class="columns is-centered">
-      <div class="column is-half has-text-centered">
-        <h1 class="title is-1">{{ code }}</h1>
-        <p class="subtitle is-4 has-text-grey">{{ reason }}</p>
-        <p class="has-text-grey">{{ message }}</p>
+    <div class="error-wrap">
+      <div class="text-center">
+        <h1 class="title title-xl">{{ code }}</h1>
+        <p class="subtitle">{{ reason }}</p>
+        <p class="text-muted">{{ message }}</p>
         {{ nav::back_link() }}
       </div>
     </div>

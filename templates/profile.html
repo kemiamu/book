@@ -1,9 +1,9 @@
 {% extends "_base.html" %}
 {% block title %}Profile - {{ site_title }}{% endblock title %}
 {% block body %}
-<section class="section is-medium">
-  <div class="container is-max-desktop">
-    <h1 class="title is-4">Profile</h1>
+<section class="section">
+  <div class="container container-narrow">
+    <h1 class="title">Profile</h1>
     <div class="block" x-data="{
       show: false,
       passkeyUrl: '{{ passkey_url }}',
@@ -15,22 +15,22 @@
         });
       }
     }">
-      <h2 class="title is-5">Passkey Link</h2>
+      <h2 class="title">Passkey Link</h2>
       <div class="block">
-        <p class="has-text-grey">
+        <p class="text-muted">
           Passkey is a privileged credential that grants the holder permission to pass authentication. This credential is valid for 7 days and cannot be revoked.        </p>
       </div>
       <div class="block">
-        <div class="buttons">
+        <div class="btn-group">
         <button
-          class="button"
-          :class="show ? 'is-primary' : 'is-warning'"
+          class="btn"
+          :class="show ? 'btn-primary' : 'btn-warning'"
           x-on:click="show = !show"
         >
           <span x-text="show ? 'Hide' : 'Show passkey link'"></span>
         </button>
         <template x-if="show">
-          <button class="button" x-on:click="copy">
+          <button class="btn" x-on:click="copy">
             Copy
           </button>
         </template>
@@ -38,20 +38,20 @@
       </div>
       <template x-if="show">
         <div class="block">
-          <div class="notification is-warning is-block">
+          <div class="notice notice-warning">
             <p>
               Valid until {{ passkey_code_expiry }} and <strong>cannot be revoked</strong>. Anyone in possession of this credential may pass authentication. Please keep it secure.            </p>
-            <p class="block"><a class="has-text-weight-bold" style="word-break: break-all" :href="passkeyUrl" x-text="passkeyUrl"></a></p>
+            <p class="block"><a class="text-bold" style="word-break: break-all" :href="passkeyUrl" x-text="passkeyUrl"></a></p>
           </div>
           <template x-if="copied">
-            <p class="has-text-success">
+            <p class="text-success">
               Copied to clipboard!
             </p>
           </template>
         </div>
       </template>
     </div>
-    <a href="/" class="has-text-grey">&larr; Back to Home</a>
+    <a href="/" class="text-muted">&larr; Back to Home</a>
   </div>
 </section>
 {% endblock body %}

@@ -6,7 +6,7 @@ use axum_extra::extract::cookie::CookieJar;
 use book::CONFIG;
 use book::crypto::Signed;
 use book::error::AppError;
-use book::model::{AppState, PageContext, Passkey, Session, UserToken};
+use book::model::{AppState, EntryMeta, PageContext, Passkey, Session, UserToken};
 use book::model::{ENTRIES, ENTRY_HTML, ENTRY_RAW, FILE_BLOB, FILES};
 use redb::{ReadableDatabase, ReadableTable};
 use std::sync::Arc;
@@ -22,6 +22,8 @@ pub use edit::*;
 pub use upload::*;
 
 // delete
+//
+// ++++++++++++============++++++++++++============++++++++++++============
 
 /// delete an entry and all its files
 pub async fn entry_delete(
@@ -82,6 +84,8 @@ pub async fn entry_delete(
 }
 
 // util
+//
+// ++++++++++++============++++++++++++============++++++++++++============
 
 /// create a 500 internal server error response
 fn internal_error(e: impl ToString) -> (StatusCode, Json<serde_json::Value>) {
@@ -97,6 +101,8 @@ fn err(status: StatusCode, msg: impl ToString) -> (StatusCode, Json<serde_json::
 }
 
 // home
+//
+// ++++++++++++============++++++++++++============++++++++++++============
 
 /// show home page with entries
 pub async fn home_page(
@@ -106,15 +112,22 @@ pub async fn home_page(
     let tx = state.db.begin_read()?;
 
     let entries_table = tx.open_table(ENTRIES)?;
-    let mut entries = Vec::new();
+    let mut entries: Vec<(String, EntryMeta)> = Vec::new();
     for result in entries_table.iter()? {
         let (key, value) = result?;
-        let entry_meta = value.value();
-        entries.push(serde_json::json!({
-            "name": key.value(),
-            "title": entry_meta.title,
-        }));
+        entries.push((key.value().to_string(), value.value()));
     }
+
+    // most recently updated first
+    entries.sort_by(|a, b| b.1.last_modified.cmp(&a.1.last_modified));
+
+    let mapped = entries.into_iter().map(|(name, meta)| {
+        serde_json::json!({
+            "name": name,
+            "title": meta.title,
+        })
+    });
+    let entries: Vec<serde_json::Value> = mapped.collect();
 
     let user = jar
         .get("session")
@@ -129,6 +142,8 @@ pub async fn home_page(
 }
 
 // view
+//
+// ++++++++++++============++++++++++++============++++++++++++============
 
 /// show an entry page
 pub async fn entry_page(
@@ -177,6 +192,8 @@ pub async fn entry_page(
 }
 
 // profile
+//
+// ++++++++++++============++++++++++++============++++++++++++============
 
 /// show profile page
 pub async fn profile_page(
@@ -208,6 +225,8 @@ pub async fn profile_page(
 }
 
 // download
+//
+// ++++++++++++============++++++++++++============++++++++++++============
 
 /// download a file by entry and file slug
 pub async fn file_download(

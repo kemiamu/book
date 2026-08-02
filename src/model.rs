@@ -24,6 +24,8 @@ pub const FILE_BLOB: Table<(&str, &str), Vec<u8>> = Table::new("file_blob");
 pub const USERS: Table<&str, User> = Table::new("users");
 
 // state
+//
+// ++++++++++++============++++++++++++============++++++++++++============
 
 /// application state
 pub struct AppState {
@@ -31,6 +33,8 @@ pub struct AppState {
 }
 
 // context
+//
+// ++++++++++++============++++++++++++============++++++++++++============
 
 /// page render context
 pub struct PageContext(tera::Context);
@@ -57,6 +61,8 @@ impl PageContext {
 }
 
 // resource types
+//
+// ++++++++++++============++++++++++++============++++++++++++============
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// file metadata
@@ -123,6 +129,8 @@ impl Markdown {
 }
 
 // user types
+//
+// ++++++++++++============++++++++++++============++++++++++++============
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// a registered user
@@ -153,6 +161,8 @@ impl User {
 }
 
 // passkey
+//
+// ++++++++++++============++++++++++++============++++++++++++============
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// authorization passkey token
@@ -194,6 +204,8 @@ impl Signable for Passkey {
 }
 
 // session
+//
+// ++++++++++++============++++++++++++============++++++++++++============
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// user session token
@@ -235,6 +247,8 @@ impl Signable for Session {
 }
 
 // token
+//
+// ++++++++++++============++++++++++++============++++++++++++============
 
 /// authenticated user extracted from session cookie
 #[derive(Debug)]
@@ -268,6 +282,8 @@ impl<S: Send + Sync + 'static> FromRequestParts<S> for UserToken {
 }
 
 // store
+//
+// ++++++++++++============++++++++++++============++++++++++++============
 
 /// implement redb::Value via postcard for a serde type
 #[macro_export]

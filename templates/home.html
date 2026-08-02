@@ -3,13 +3,11 @@
 {% block title %}{{ site_title }}{% endblock title %}
 {% block body %}
 <section class="hero">
-  <div class="hero-body">
-    <div class="container is-max-desktop">
-      <p class="title is-3">Table of Contents</p>
-      <p class="subtitle is-5 has-text-grey">
-        All content is listed here...
-      </p>
-    </div>
+  <div class="container container-narrow">
+    <p class="title">Table of Contents</p>
+    <p class="subtitle text-muted">
+      All content is listed here...
+    </p>
   </div>
 </section>
 {{ listing::listing(title="Entries", items=entries, type="entry") }}

@@ -130,7 +130,7 @@ where
             // table
             Event::Start(Tag::Table(alignments)) => {
                 self.table_alignments = alignments;
-                self.write_str("<table class=\"table is-fullwidth\">")?;
+                self.write_str("<table class=\"table\">")?;
             }
             Event::End(TagEnd::Table) => self.write_str("</tbody></table>")?,
             Event::Start(Tag::TableHead) => {
@@ -173,15 +173,15 @@ where
             Event::Start(Tag::BlockQuote(None)) => self.write_str("<blockquote>")?,
             Event::Start(Tag::BlockQuote(Some(kind))) => {
                 let (heading, suffix) = match kind {
-                    pulldown_cmark::BlockQuoteKind::Note => ("Note", " is-info"),
-                    pulldown_cmark::BlockQuoteKind::Tip => ("Tip", " is-success"),
-                    pulldown_cmark::BlockQuoteKind::Important => ("Important", " is-primary"),
-                    pulldown_cmark::BlockQuoteKind::Warning => ("Warning", " is-warning"),
-                    pulldown_cmark::BlockQuoteKind::Caution => ("Caution", " is-danger"),
+                    pulldown_cmark::BlockQuoteKind::Note => ("Note", "notice-info"),
+                    pulldown_cmark::BlockQuoteKind::Tip => ("Tip", "notice-success"),
+                    pulldown_cmark::BlockQuoteKind::Important => ("Important", "notice-primary"),
+                    pulldown_cmark::BlockQuoteKind::Warning => ("Warning", "notice-warning"),
+                    pulldown_cmark::BlockQuoteKind::Caution => ("Caution", "notice-danger"),
                 };
                 write!(
                     self.writer,
-                    "<div class=\"notification{suffix}\"><p class=\"has-text-weight-bold\">{heading}:</p> "
+                    "<div class=\"notice {suffix}\"><p class=\"text-bold\">{heading}:</p> "
                 )?
             }
             Event::End(TagEnd::BlockQuote(None)) => self.write_str("</blockquote>")?,

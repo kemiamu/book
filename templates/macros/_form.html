@@ -32,19 +32,15 @@
 {% endmacro textarea %}
 
 {% macro button_group(submit_text, loading_text, cancel_url) %}
-<div class="field is-grouped">
-  <div class="control">
-    <button
-      class="button is-primary"
-      type="submit"
-      :disabled="loading"
-      :class="{'is-loading':loading}"
-    >
-      <span x-text="loading?'{{ loading_text }}':'{{ submit_text }}'"></span>
-    </button>
-  </div>
-  <div class="control">
-    <a class="button" href="{{ cancel_url }}">Cancel</a>
-  </div>
+<div class="field field-row">
+  <button
+    class="btn btn-primary"
+    type="submit"
+    :disabled="loading"
+    :class="{'btn-loading':loading}"
+  >
+    <span x-text="loading?'{{ loading_text }}':'{{ submit_text }}'"></span>
+  </button>
+  <a class="btn" href="{{ cancel_url }}">Cancel</a>
 </div>
 {% endmacro button_group %}

@@ -1,34 +1,32 @@
 <footer class="footer">
   <div class="container">
-    <div class="columns">
-      <div class="column is-7">
-        <p class="title is-5">{{ site_title }}</p>
-        <p class="has-text-grey">A rather humble documentation site.</p>
+    <div class="footer-grid">
+      <div>
+        <p class="title">{{ site_title }}</p>
+        <p class="text-muted">A rather humble documentation site.</p>
       </div>
-      <div class="column is-5">
-        <p class="title is-6">Links</p>
+      <div class="footer-links">
+        <p class="title">Links</p>
         <ul>
-          <li><a href="/" class="has-text-grey">Home</a></li>
+          <li><a href="/" class="text-muted">Home</a></li>
           {% if user %}
-          <li><a href="/edit" class="has-text-grey">New Entry</a></li>
-          <li><a href="/profile" class="has-text-grey">Profile</a></li>
-          <li><a href="/auth/sign-out" :class="confirm ? 'has-text-danger' : 'has-text-grey'" x-data="{ confirm: false }" @click.prevent="if (confirm) { window.location.href = '/auth/sign-out' } else { confirm = true; setTimeout(() => confirm = false, 3000) }" x-text="confirm ? 'Confirm Sign Out?' : 'Sign Out'"></a></li>
+          <li><a href="/edit" class="text-muted">New Entry</a></li>
+          <li><a href="/profile" class="text-muted">Profile</a></li>
+          <li><a href="/auth/sign-out" :class="confirm ? 'text-danger' : 'text-muted'" x-data="{ confirm: false }" @click.prevent="if (confirm) { window.location.href = '/auth/sign-out' } else { confirm = true; setTimeout(() => confirm = false, 3000) }" x-text="confirm ? 'Confirm Sign Out?' : 'Sign Out'"></a></li>
           {% endif %}
           {% if user and entry_slug %}
-          <li><a href="#" :class="confirm ? 'has-text-danger' : 'has-text-grey'" x-data="{ confirm: false }" @click.prevent="if (confirm) { deleteEntry('{{ entry_slug }}') } else { confirm = true; setTimeout(() => confirm = false, 3000) }" x-text="confirm ? 'Confirm Delete?' : 'Delete This Entry'"></a></li>
+          <li><a href="#" :class="confirm ? 'text-danger' : 'text-muted'" x-data="{ confirm: false }" @click.prevent="if (confirm) { deleteEntry('{{ entry_slug }}') } else { confirm = true; setTimeout(() => confirm = false, 3000) }" x-text="confirm ? 'Confirm Delete?' : 'Delete This Entry'"></a></li>
           {% endif %}
         </ul>
       </div>
     </div>
     <hr />
-    <div class="level has-text-grey-light">
-      <div class="level-left">
-        <p>
-          &copy; 2026 by Contributors 🥥 &mdash;
-          licensed under
-          <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>
-        </p>
-      </div>
+    <div class="footer-bottom">
+      <p class="text-faint">
+        &copy; 2026 by Contributors 🥥 &mdash;
+        licensed under
+        <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>
+      </p>
     </div>
   </div>
   {% if user and entry_slug %}

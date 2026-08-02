@@ -1,7 +1,7 @@
 {% macro error_notification() %}
 <template x-if="error">
-  <div class="notification is-danger">
-    <button class="delete" type="button" x-on:click="error=null"></button>
+  <div class="notice notice-danger">
+    <button class="notice-close" type="button" x-on:click="error=null"></button>
     <p x-text="error"></p>
   </div>
 </template>

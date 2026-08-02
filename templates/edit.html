@@ -54,8 +54,8 @@ function editApp() {
 {% endblock head %}
 {% block body %}
 <section class="section">
-  <div class="container is-max-desktop">
-    <h1 class="title is-4">{% if slug | length > 0 %}Edit Entry{% else %}New Entry{% endif %}</h1>
+  <div class="container container-narrow">
+    <h1 class="title">{% if slug | length > 0 %}Edit Entry{% else %}New Entry{% endif %}</h1>
     <form
       x-data="editApp()"
       x-on:submit.prevent="submit"
