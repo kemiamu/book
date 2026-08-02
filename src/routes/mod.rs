@@ -6,7 +6,7 @@ use axum_extra::extract::cookie::CookieJar;
 use book::CONFIG;
 use book::crypto::Signed;
 use book::error::AppError;
-use book::model::{AppState, EntryMeta, PageContext, Passkey, Session, UserToken};
+use book::model::{AppState, EntryMeta, PageContext, Passkey, Session, Slug, UserToken};
 use book::model::{ENTRIES, ENTRY_HTML, ENTRY_RAW, FILE_BLOB, FILES};
 use redb::{ReadableDatabase, ReadableTable};
 use std::sync::Arc;
@@ -32,17 +32,18 @@ pub async fn entry_delete(
     Path(slug): Path<String>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let _username = token?;
+    let slug = Slug::new(slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
     let tx = state.db.begin_write()?;
 
     // collect all file keys for this entry
-    let files_to_remove: Vec<(String, String)> = {
+    let files_to_remove: Vec<(Slug, Slug)> = {
         let files_table = tx.open_table(FILES)?;
         let mut keys = Vec::new();
         for result in files_table.iter()? {
             let (key, _) = result?;
             let (entry, file) = key.value();
-            if entry == slug.as_str() {
-                keys.push((entry.to_string(), file.to_string()));
+            if entry == slug {
+                keys.push((entry, file));
             }
         }
         keys
@@ -52,7 +53,7 @@ pub async fn entry_delete(
     {
         let mut blobs_table = tx.open_table(FILE_BLOB)?;
         for (entry, file) in &files_to_remove {
-            blobs_table.remove((entry.as_str(), file.as_str()))?;
+            blobs_table.remove((entry.clone(), file.clone()))?;
         }
     }
 
@@ -60,22 +61,22 @@ pub async fn entry_delete(
     {
         let mut files_table = tx.open_table(FILES)?;
         for (entry, file) in &files_to_remove {
-            files_table.remove((entry.as_str(), file.as_str()))?;
+            files_table.remove((entry.clone(), file.clone()))?;
         }
     }
 
     // remove entry data from all tables
     {
         let mut entries_table = tx.open_table(ENTRIES)?;
-        entries_table.remove(slug.as_str())?;
+        entries_table.remove(slug.clone())?;
     }
     {
         let mut raw_table = tx.open_table(ENTRY_RAW)?;
-        raw_table.remove(slug.as_str())?;
+        raw_table.remove(slug.clone())?;
     }
     {
         let mut html_table = tx.open_table(ENTRY_HTML)?;
-        html_table.remove(slug.as_str())?;
+        html_table.remove(slug)?;
     }
 
     tx.commit()?;
@@ -151,10 +152,11 @@ pub async fn entry_page(
     State(state): State<Arc<AppState>>,
     Path(slug): Path<String>,
 ) -> Result<Html<String>, AppError> {
+    let slug = Slug::new(slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
     let tx = state.db.begin_read()?;
 
     let entries_table = tx.open_table(ENTRIES)?;
-    let Some(row) = entries_table.get(slug.as_str())? else {
+    let Some(row) = entries_table.get(slug.clone())? else {
         return Err(AppError::new(
             StatusCode::NOT_FOUND,
             format!("entry not found: {slug}"),
@@ -162,7 +164,7 @@ pub async fn entry_page(
     };
 
     let html_table = tx.open_table(ENTRY_HTML)?;
-    let Some(body) = html_table.get(slug.as_str())? else {
+    let Some(body) = html_table.get(slug.clone())? else {
         return Err(AppError::new(
             StatusCode::NOT_FOUND,
             format!("entry body not found: {slug}"),
@@ -233,11 +235,13 @@ pub async fn file_download(
     State(state): State<Arc<AppState>>,
     Path((entry_slug, file_slug)): Path<(String, String)>,
 ) -> Result<(StatusCode, impl IntoResponse), AppError> {
+    let entry_slug =
+        Slug::new(entry_slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let file_slug = Slug::new(file_slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
     let tx = state.db.begin_read()?;
 
     let files_table = tx.open_table(FILES)?;
-    let key = (entry_slug.as_str(), file_slug.as_str());
-    let Some(_meta) = files_table.get(key)? else {
+    let Some(_meta) = files_table.get((entry_slug.clone(), file_slug.clone()))? else {
         return Err(AppError::new(
             StatusCode::NOT_FOUND,
             format!("file not found: {entry_slug}/{file_slug}"),
@@ -246,7 +250,7 @@ pub async fn file_download(
     drop(files_table);
 
     let blobs_table = tx.open_table(FILE_BLOB)?;
-    let Some(blob) = blobs_table.get(key)? else {
+    let Some(blob) = blobs_table.get((entry_slug.clone(), file_slug.clone()))? else {
         return Err(AppError::new(
             StatusCode::NOT_FOUND,
             format!("file blob not found: {entry_slug}/{file_slug}"),
@@ -255,8 +259,8 @@ pub async fn file_download(
     let data = blob.value();
     drop(blobs_table);
 
-    let content_type =
-        mime_guess::from_path(&file_slug).first_or(mime_guess::mime::APPLICATION_OCTET_STREAM);
+    let content_type = mime_guess::from_path(file_slug.as_ref())
+        .first_or(mime_guess::mime::APPLICATION_OCTET_STREAM);
 
     let headers = [
         ("Content-Type", content_type.to_string()),

@@ -2,30 +2,26 @@ use crate::crypto::{Mac, Signable, Signed};
 use crate::error::AppError;
 use crate::html::HtmlWriter;
 use axum::extract::FromRequestParts;
-use axum::http::StatusCode;
-use axum::http::request::Parts;
+use axum::http::{StatusCode, request::Parts};
 use axum_extra::extract::cookie::CookieJar;
 use redb::TableDefinition as Table;
+use std::borrow::Cow;
 use std::collections::HashSet;
 
 /// entries table definition
-pub const ENTRIES: Table<&str, EntryMeta> = Table::new("entries");
+pub const ENTRIES: Table<Slug, EntryMeta> = Table::new("entries");
 /// entry raw markdown table definition
-pub const ENTRY_RAW: Table<&str, Markdown> = Table::new("entry_raw");
+pub const ENTRY_RAW: Table<Slug, Markdown> = Table::new("entry_raw");
 /// entry rendered html table definition
-pub const ENTRY_HTML: Table<&str, String> = Table::new("entry_html");
+pub const ENTRY_HTML: Table<Slug, String> = Table::new("entry_html");
 
 /// files table definition
-pub const FILES: Table<(&str, &str), FileMeta> = Table::new("files");
+pub const FILES: Table<(Slug, Slug), FileMeta> = Table::new("files");
 /// file blob table definition
-pub const FILE_BLOB: Table<(&str, &str), Vec<u8>> = Table::new("file_blob");
+pub const FILE_BLOB: Table<(Slug, Slug), Vec<u8>> = Table::new("file_blob");
 
 /// users table definition
-pub const USERS: Table<&str, User> = Table::new("users");
-
-// state
-//
-// ++++++++++++============++++++++++++============++++++++++++============
+pub const USERS: Table<Slug, User> = Table::new("users");
 
 /// application state
 pub struct AppState {
@@ -203,7 +199,7 @@ impl Signable for Passkey {
     }
 }
 
-// session
+// session / token
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
@@ -246,10 +242,6 @@ impl Signable for Session {
     }
 }
 
-// token
-//
-// ++++++++++++============++++++++++++============++++++++++++============
-
 /// authenticated user extracted from session cookie
 #[derive(Debug)]
 pub struct UserToken(pub Result<String, AppError>);
@@ -278,6 +270,81 @@ impl<S: Send + Sync + 'static> FromRequestParts<S> for UserToken {
         };
 
         Ok(UserToken(Ok(session.inner.user)))
+    }
+}
+
+// slug
+//
+// ++++++++++++============++++++++++++============++++++++++++============
+
+/// validated slug: non-empty, single URL path segment
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
+pub struct Slug(Cow<'static, str>);
+
+impl Slug {
+    /// check if a char is allowed in a slug
+    fn is_slug_char(c: char) -> bool {
+        c.is_ascii_alphanumeric() || c == '-' || c == '_'
+    }
+
+    /// validate and create a new slug
+    pub fn new(s: impl Into<Cow<'static, str>>) -> Result<Self, &'static str> {
+        let cow = s.into();
+        if cow.is_empty() {
+            Err("slug must not be empty")
+        } else if cow.len() > 255 {
+            Err("slug must be at most 255 bytes")
+        } else if !cow.chars().all(Self::is_slug_char) {
+            Err("slug may only contain a-z, A-Z, 0-9, '-' and '_'")
+        } else {
+            Ok(Self(cow))
+        }
+    }
+}
+
+impl std::fmt::Display for Slug {
+    /// format as plain string
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl AsRef<str> for Slug {
+    /// borrow the underlying string
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for Slug {
+    type Target = str;
+
+    /// deref to the underlying string
+    fn deref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl serde::Serialize for Slug {
+    /// serialize as a plain string
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(&self.0)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Slug {
+    /// deserialize with validation
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(d)?;
+        Slug::new(s).map_err(serde::de::Error::custom)
+    }
+}
+
+impl redb::Key for Slug {
+    /// keys are ordered by raw bytes, same as `str`
+    fn compare(a: &[u8], b: &[u8]) -> std::cmp::Ordering {
+        a.cmp(b)
     }
 }
 
@@ -328,3 +395,4 @@ impl_stored!(FileMeta);
 impl_stored!(EntryMeta);
 impl_stored!(Markdown);
 impl_stored!(User);
+impl_stored!(Slug);

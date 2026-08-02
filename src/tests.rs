@@ -1,5 +1,19 @@
 use crate::crypto::{Signable, Signed};
+use crate::model::Slug;
 use std::collections::HashSet;
+
+#[test]
+fn slug_validation() {
+    assert!(Slug::new("hello-world").is_ok());
+    assert!(Slug::new("Hello_World-2").is_ok());
+    assert!(Slug::new("hello/world").is_err());
+    assert!(Slug::new("hello world").is_err());
+    assert!(Slug::new("hello.world").is_err());
+    assert!(Slug::new("").is_err());
+    assert!(Slug::new(".hidden").is_err());
+    assert_eq!(Slug::new("hello").unwrap().as_ref(), "hello");
+    assert_eq!(format!("{}", Slug::new("rust").unwrap()), "rust");
+}
 
 #[test]
 fn entry_meta_basics() {

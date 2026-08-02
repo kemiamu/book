@@ -7,7 +7,7 @@ use book::CONFIG;
 use book::crypto::Signed;
 use book::error::AppError;
 use book::model::FileMeta;
-use book::model::{AppState, PageContext, Session, UserToken};
+use book::model::{AppState, PageContext, Session, Slug, UserToken};
 use book::model::{FILE_BLOB, FILES};
 use serde::Deserialize;
 use std::sync::Arc;
@@ -109,16 +109,20 @@ pub async fn file_upload_post(
         return Err(AppError::new(StatusCode::BAD_REQUEST, "No file uploaded"));
     };
 
+    let entry_slug =
+        Slug::new(entry_slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let file_slug = Slug::new(file_slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+
     let tx = state.db.begin_write()?;
 
     let mut files_table = tx.open_table(FILES)?;
-    let key = (entry_slug.as_str(), file_slug.as_str());
+    let key = (entry_slug.clone(), file_slug.clone());
     let meta = FileMeta::new(&username);
     files_table.insert(key, meta)?;
     drop(files_table);
 
     let mut blobs_table = tx.open_table(FILE_BLOB)?;
-    blobs_table.insert(key, data)?;
+    blobs_table.insert((entry_slug, file_slug), data)?;
     drop(blobs_table);
 
     tx.commit()?;

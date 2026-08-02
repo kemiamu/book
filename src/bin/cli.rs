@@ -1,6 +1,6 @@
 use book::crypto::Signed;
 use book::model::{ENTRIES, ENTRY_HTML, ENTRY_RAW, FILE_BLOB, FILES, USERS};
-use book::model::{Passkey, User};
+use book::model::{Passkey, Slug, User};
 use clap::Parser;
 use time::OffsetDateTime;
 use time::format_description::well_known::Iso8601;
@@ -71,7 +71,8 @@ impl InitUser {
         {
             let mut users = tx.open_table(USERS).unwrap();
             let user = User::new(&self.password, &book::CONFIG.secret, &self.username);
-            users.insert(self.username.as_str(), user).unwrap();
+            let username = Slug::new(self.username.clone()).expect("invalid username");
+            users.insert(username, user).unwrap();
         }
         tx.commit().unwrap();
 

@@ -10,7 +10,7 @@ use book::crypto::Signed;
 use book::error::AppError;
 use book::model::PageContext;
 use book::model::USERS;
-use book::model::{AppState, Passkey, Session, User};
+use book::model::{AppState, Passkey, Session, Slug, User};
 use redb::ReadableDatabase;
 use redb::ReadableTable;
 use serde::Deserialize;
@@ -59,11 +59,13 @@ pub async fn sign_in_post(
     let _passkey = Signed::<Passkey>::parse(&body.passkey, &CONFIG.secret)
         .ok_or_else(|| err(StatusCode::UNAUTHORIZED, "Invalid or expired passkey"))?;
 
+    let username = Slug::new(body.username.clone()).map_err(|e| err(StatusCode::BAD_REQUEST, e))?;
+
     let tx = state.db.begin_read().map_err(internal_error)?;
     let table = tx.open_table(USERS).map_err(internal_error)?;
 
     let user = table
-        .get(body.username.as_str())
+        .get(username)
         .map_err(internal_error)?
         .ok_or_else(|| err(StatusCode::UNAUTHORIZED, "Invalid username or password"))?
         .value();
@@ -100,11 +102,13 @@ pub async fn sign_up_post(
     let passkey = Signed::<Passkey>::parse(&body.passkey, &CONFIG.secret)
         .ok_or_else(|| err(StatusCode::UNAUTHORIZED, "Invalid or expired passkey"))?;
 
+    let username = Slug::new(body.username.clone()).map_err(|e| err(StatusCode::BAD_REQUEST, e))?;
+
     let tx = state.db.begin_write().map_err(internal_error)?;
     let mut table = tx.open_table(USERS).map_err(internal_error)?;
 
     if table
-        .get(body.username.as_str())
+        .get(username.clone())
         .map_err(internal_error)?
         .is_some()
     {
@@ -112,9 +116,7 @@ pub async fn sign_up_post(
     }
 
     let user = User::new(&body.password, &CONFIG.secret, passkey.inner.creator);
-    table
-        .insert(body.username.as_str(), user)
-        .map_err(internal_error)?;
+    table.insert(username, user).map_err(internal_error)?;
     drop(table);
     tx.commit().map_err(internal_error)?;
 
