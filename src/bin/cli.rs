@@ -8,24 +8,89 @@ use time::format_description::well_known::Iso8601;
 #[derive(Parser)]
 #[command(name = "cli")]
 enum Cli {
-    /// Initialize database tables
-    InitTables,
-    /// Create a new user
-    InitUser {
-        /// Username for the new user
-        username: String,
-        /// Password for the new user
-        password: String,
-    },
-    /// Generate a passkey
-    GenPasskey,
+    InitTables(InitTables),
+    InitUser(InitUser),
+    GenPasskey(GenPasskey),
 }
 
 fn main() {
     match Cli::parse() {
-        Cli::InitTables => init_tables(),
-        Cli::InitUser { username, password } => init_user(&username, &password),
-        Cli::GenPasskey => gen_passkey(""),
+        Cli::InitTables(cmd) => cmd.run(),
+        Cli::InitUser(cmd) => cmd.run(),
+        Cli::GenPasskey(cmd) => cmd.run(),
+    }
+}
+
+// init tables
+//
+// ++++++++++++============++++++++++++============++++++++++++============
+
+#[derive(clap::Args)]
+/// Initialize database tables
+struct InitTables;
+
+impl InitTables {
+    /// run the command
+    fn run(&self) {
+        let db = redb::Database::create("data.redb").unwrap();
+
+        let tx = db.begin_write().unwrap();
+        {
+            tx.open_table(ENTRIES).unwrap();
+            tx.open_table(ENTRY_RAW).unwrap();
+            tx.open_table(ENTRY_HTML).unwrap();
+            tx.open_table(FILES).unwrap();
+            tx.open_table(FILE_BLOB).unwrap();
+            tx.open_table(USERS).unwrap();
+        }
+        tx.commit().unwrap();
+
+        println!("tables initialized");
+    }
+}
+
+// init user
+//
+// ++++++++++++============++++++++++++============++++++++++++============
+
+#[derive(clap::Args)]
+/// Create a new user
+struct InitUser {
+    /// Username for the new user
+    username: String,
+    /// Password for the new user
+    password: String,
+}
+
+impl InitUser {
+    /// run the command
+    fn run(&self) {
+        let db = redb::Database::create("data.redb").unwrap();
+
+        let tx = db.begin_write().unwrap();
+        {
+            let mut users = tx.open_table(USERS).unwrap();
+            let user = User::new(&self.password, &book::CONFIG.secret, &self.username);
+            users.insert(self.username.as_str(), user).unwrap();
+        }
+        tx.commit().unwrap();
+
+        println!("user created: {}", self.username);
+    }
+}
+
+// gen passkey
+//
+// ++++++++++++============++++++++++++============++++++++++++============
+
+#[derive(clap::Args)]
+/// Generate a passkey
+struct GenPasskey;
+
+impl GenPasskey {
+    /// run the command
+    fn run(&self) {
+        gen_passkey("")
     }
 }
 
@@ -44,35 +109,4 @@ fn gen_passkey(creator: &str) {
     println!("  Code:    {}", &code[..32]);
     println!("  URL:     {url}");
     println!("  Expires: {expires_at}");
-}
-
-fn init_tables() {
-    let db = redb::Database::create("data.redb").unwrap();
-
-    let tx = db.begin_write().unwrap();
-    {
-        tx.open_table(ENTRIES).unwrap();
-        tx.open_table(ENTRY_RAW).unwrap();
-        tx.open_table(ENTRY_HTML).unwrap();
-        tx.open_table(FILES).unwrap();
-        tx.open_table(FILE_BLOB).unwrap();
-        tx.open_table(USERS).unwrap();
-    }
-    tx.commit().unwrap();
-
-    println!("tables initialized");
-}
-
-fn init_user(username: &str, password: &str) {
-    let db = redb::Database::create("data.redb").unwrap();
-
-    let tx = db.begin_write().unwrap();
-    {
-        let mut users = tx.open_table(USERS).unwrap();
-        let user = User::new(password, &book::CONFIG.secret, username);
-        users.insert(username, user).unwrap();
-    }
-    tx.commit().unwrap();
-
-    println!("user created: {username}");
 }
