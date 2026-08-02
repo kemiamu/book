@@ -123,7 +123,7 @@ pub async fn home_page(
 
     let mapped = entries.into_iter().map(|(name, meta)| {
         serde_json::json!({
-            "name": name,
+            "href": format!("/{name}/README.md"),
             "title": meta.title,
         })
     });
@@ -187,7 +187,7 @@ pub async fn entry_page(
         .insert("slug", &slug)
         .insert("page_date", &date)
         .insert("page_editor", &entry_meta.editor)
-        .insert("entry_slug", &slug);
+        .insert("page_slug", &slug);
     Ok(Html(page.render("entry.html")?))
 }
 
