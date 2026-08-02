@@ -4,6 +4,7 @@
     <h2 class="list-title">{{ title }}</h2>
     <ol class="entry-list">
       {% for item in items %}
+      {% if not loop.first %}<li class="entry-sep" aria-hidden="true"></li>{% endif %}
       <li class="entry-item">
         <a class="entry-link" href="/{{ item.name }}/README.md">{{ item.title }}</a>
       </li>
