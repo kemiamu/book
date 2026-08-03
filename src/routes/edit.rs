@@ -1,22 +1,16 @@
-use axum::Json;
-use axum::extract::{Query, State};
-use axum::http::StatusCode;
-use axum::response::Html;
+use axum::{Json, extract::Query, extract::State, http::StatusCode, response::Html};
 use axum_extra::extract::cookie::CookieJar;
-use book::CONFIG;
-use book::crypto::Signed;
-use book::error::AppError;
 use book::model::{AppState, ENTRIES, ENTRY_BODY, EntryBody, EntryMeta};
 use book::model::{Markdown, PageContext, Session, Slug, UserToken};
-use redb::ReadableDatabase;
-use redb::ReadableTable;
+use book::{CONFIG, crypto::Signed, error::AppError};
+use redb::{ReadableDatabase, ReadableTable};
 use serde::Deserialize;
 use std::sync::Arc;
 
 #[derive(Deserialize)]
 /// edit entry query params
 pub struct EditQuery {
-    pub class: Option<String>,
+    pub category: Option<String>,
     pub entry: Option<String>,
 }
 
@@ -27,15 +21,18 @@ pub async fn edit_page(
     State(state): State<Arc<AppState>>,
     Query(params): Query<EditQuery>,
 ) -> Result<Html<String>, AppError> {
-    let (class, slug, title, body) =
-        if let (Some(class), Some(entry)) = (&params.class, &params.entry) {
-            let class = Slug::new(class.clone()).map_err(|e| {
-                AppError::new(StatusCode::BAD_REQUEST, format!("invalid class slug: {e}"))
+    let (category, slug, title, body) =
+        if let (Some(category), Some(entry)) = (&params.category, &params.entry) {
+            let category = Slug::new(category.clone()).map_err(|e| {
+                AppError::new(
+                    StatusCode::BAD_REQUEST,
+                    format!("invalid category slug: {e}"),
+                )
             })?;
             let entry = Slug::new(entry.clone()).map_err(|e| {
                 AppError::new(StatusCode::BAD_REQUEST, format!("invalid entry slug: {e}"))
             })?;
-            let key = (class, entry);
+            let key = (category, entry);
             let tx = state.db.begin_read()?;
 
             let entries_table = tx.open_table(ENTRIES)?;
@@ -71,7 +68,7 @@ pub async fn edit_page(
         .map(|session| session.inner.user);
     let page = PageContext::new()
         .insert("page_title", "Edit")
-        .insert("class", &class)
+        .insert("category", &category)
         .insert("slug", &slug)
         .insert("title", &title)
         .insert("body", &body)
@@ -83,7 +80,7 @@ pub async fn edit_page(
 #[derive(Deserialize)]
 /// edit form payload
 pub struct EditForm {
-    pub class: String,
+    pub category: String,
     pub slug: String,
     pub title: String,
     pub body: String,
@@ -99,9 +96,10 @@ pub async fn edit_post(
 
     let username = token?;
 
-    let class = Slug::new(body.class).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let category =
+        Slug::new(body.category).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
     let slug = Slug::new(body.slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
-    let key = (class, slug);
+    let key = (category, slug);
 
     // a fresh entry can be created with just a slug; fall back to the slug
     // as the title until a real one is provided

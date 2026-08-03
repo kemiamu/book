@@ -1,14 +1,9 @@
-use axum::Router;
-use axum::extract::DefaultBodyLimit;
-use axum::routing::{get, post};
-use book::CONFIG;
-use book::model::{AppState, init_tables};
+use axum::{Router, extract::DefaultBodyLimit, routing::get, routing::post};
+use book::{CONFIG, model::AppState, model::init_tables};
 use redb::Database;
-use std::path::Path;
-use std::sync::Arc;
+use std::{path::Path, sync::Arc};
 use tokio::net::TcpListener;
-use tower_http::compression::CompressionLayer;
-use tower_http::services::ServeDir;
+use tower_http::{compression::CompressionLayer, services::ServeDir};
 
 mod routes;
 
@@ -35,10 +30,10 @@ async fn main() {
         .route("/upload", get(routes::file_upload_page))
         .route("/upload", post(routes::file_upload_post))
         // view / download / delete
-        .route("/{class}/README.md", get(routes::class_page))
-        .route("/{class}/{entry}/README.md", get(routes::entry_page))
-        .route("/{class}/{entry}/{file}", get(routes::file_download))
-        .route("/{class}/{entry}/delete", post(routes::entry_delete))
+        .route("/{category}/README.md", get(routes::category_page))
+        .route("/{category}/{entry}/README.md", get(routes::entry_page))
+        .route("/{category}/{entry}/{file}", get(routes::file_download))
+        .route("/{category}/{entry}/delete", post(routes::entry_delete))
         // static files
         .route("/robots.txt", get(routes::robots_txt))
         .nest_service("/img", ServeDir::new("public/img"))

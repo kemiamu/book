@@ -1,8 +1,6 @@
 use html_escape::encode_safe;
 use pulldown_cmark::{CodeBlockKind, Event, Tag, TagEnd};
-use std::collections::HashMap;
-use std::default::Default;
-use std::fmt;
+use std::{collections::HashMap, default::Default, fmt};
 
 enum TableState {
     Head,

@@ -1,11 +1,11 @@
 use crate::crypto::{Signable, Signed};
-use crate::model::{ClassKey, EntryKey, FileKey, Slug, UserKey};
+use crate::model::{CategoryKey, EntryKey, FileKey, Slug, UserKey};
 
 fn user(name: &str) -> Slug<UserKey> {
     Slug::new(name.to_string()).unwrap()
 }
 
-fn class(name: &str) -> Slug<ClassKey> {
+fn category(name: &str) -> Slug<CategoryKey> {
     Slug::new(name.to_string()).unwrap()
 }
 
@@ -27,7 +27,7 @@ fn slug_validation() {
 #[test]
 fn slug_rules_differ() {
     // dots are only allowed for files (filenames)
-    assert!(Slug::<ClassKey>::new("a.b").is_err());
+    assert!(Slug::<CategoryKey>::new("a.b").is_err());
     assert!(Slug::<EntryKey>::new("a.b").is_err());
     assert!(Slug::<FileKey>::new("a.b").is_ok());
     assert!(Slug::<UserKey>::new("a.b").is_err());
@@ -149,9 +149,9 @@ fn signed_tampered_token_fails() {
 }
 
 #[test]
-fn class_slug_is_valid() {
-    assert!(class("notes").as_ref() == "notes");
-    assert!(Slug::<ClassKey>::new("a.b").is_err());
+fn category_slug_is_valid() {
+    assert!(category("notes").as_ref() == "notes");
+    assert!(Slug::<CategoryKey>::new("a.b").is_err());
 }
 
 fn cfg(base_url: &str) -> crate::config::Config {

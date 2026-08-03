@@ -7,7 +7,7 @@
 const BASE = "{{ base_path }}";
 function editApp() {
   return {
-    class: "",
+    categorySlug: "",
     slug: "",
     title: "",
     body: "",
@@ -16,12 +16,12 @@ function editApp() {
     preview: false,
     init() {
       const el = this.$el;
-      this.class = el.dataset.class || "";
+      this.categorySlug = el.dataset.category || "";
       this.slug = el.dataset.slug || "";
       this.title = el.dataset.title || "";
       this.body = el.dataset.body || "";
       this.error = el.dataset.error || "";
-      this.isNew = !el.dataset.class && !el.dataset.slug;
+      this.isNew = !el.dataset.category && !el.dataset.slug;
     },
     togglePreview() {
       this.preview = !this.preview;
@@ -34,7 +34,7 @@ function editApp() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            class: this.class,
+            category: this.categorySlug,
             slug: this.slug,
             title: this.title,
             body: this.body,
@@ -42,8 +42,8 @@ function editApp() {
         });
         if (r.ok) {
           const dest = this.isNew
-            ? BASE + "/edit?class=" + encodeURIComponent(this.class) + "&entry=" + encodeURIComponent(this.slug)
-            : BASE + "/" + encodeURIComponent(this.class) + "/" + encodeURIComponent(this.slug) + "/README.md";
+            ? BASE + "/edit?category=" + encodeURIComponent(this.categorySlug) + "&entry=" + encodeURIComponent(this.slug)
+            : BASE + "/" + encodeURIComponent(this.categorySlug) + "/" + encodeURIComponent(this.slug) + "/README.md";
           window.location.href = dest;
         } else {
           const t = await r.text();
@@ -67,7 +67,7 @@ function editApp() {
     <form
       x-data="editApp()"
       x-on:submit.prevent="submit"
-      data-class="{{ class }}"
+      data-category="{{ category }}"
       data-slug="{{ slug }}"
       data-title="{{ title }}"
       data-body="{{ body }}"
@@ -75,15 +75,15 @@ function editApp() {
     >
       {% if slug | length == 0 %}
       <div class="field">
-        <label class="label" for="class">Class (category)</label>
+        <label class="label" for="category">Category</label>
         <div class="control">
           <input
             class="input"
             type="text"
-            id="class"
-            x-model="class"
+            id="category"
+            x-model="categorySlug"
             required
-            placeholder="my-class"
+            placeholder="my-category"
           />
         </div>
       </div>
@@ -105,7 +105,7 @@ function editApp() {
       {{ form::textarea(label="Body (Markdown)", id="body", model="body", placeholder="Write content in Markdown...") }}
       {% endif %}
       {% if slug | length > 0 %}
-        {% set cancel_url = base_path ~ "/" ~ class ~ "/" ~ slug ~ "/README.md" %}
+        {% set cancel_url = base_path ~ "/" ~ category ~ "/" ~ slug ~ "/README.md" %}
       {% else %}
         {% set cancel_url = base_path ~ "/" %}
       {% endif %}

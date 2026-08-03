@@ -1,20 +1,12 @@
-use axum::Json;
-use axum::extract::{Path, State};
-use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse};
+use axum::{Json, extract::Path, extract::State, http::StatusCode};
 use axum_extra::extract::cookie::CookieJar;
-use book::CONFIG;
-use book::crypto::Signed;
-use book::error::AppError;
-use book::model::{AppState, ENTRIES, ENTRY_BODY, EntryMeta, FILES};
-use book::model::{
-    ClassKey, EntryKey, FILE_BLOB, FileKey, PageContext, Passkey, Session, Slug, UserToken,
-};
+use book::model::{AppState, CategoryKey, ENTRIES, ENTRY_BODY, EntryKey, EntryMeta};
+use book::model::{FILE_BLOB, FILES, FilePath, PageContext, Passkey, Session, Slug, UserToken};
+use book::{CONFIG, crypto::Signed, error::AppError};
 use redb::{ReadableDatabase, ReadableTable};
-use std::collections::BTreeSet;
-use std::sync::Arc;
-use time::OffsetDateTime;
-use time::format_description::well_known::Iso8601;
+use std::{collections::BTreeSet, sync::Arc};
+use time::{OffsetDateTime, format_description::well_known::Iso8601};
 
 mod auth;
 mod edit;
@@ -32,22 +24,22 @@ pub use upload::*;
 pub async fn entry_delete(
     UserToken(token): UserToken,
     State(state): State<Arc<AppState>>,
-    Path((class, entry)): Path<(String, String)>,
+    Path((category, entry)): Path<(String, String)>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let _username = token?;
-    let class = Slug::new(class).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let category = Slug::new(category).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
     let entry = Slug::new(entry).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
     let tx = state.db.begin_write()?;
 
     // collect all file keys for this entry
-    let files_to_remove: Vec<(Slug<ClassKey>, Slug<EntryKey>, Slug<FileKey>)> = {
+    let files_to_remove: Vec<FilePath> = {
         let files_table = tx.open_table(FILES)?;
         let mut keys = Vec::new();
         for result in files_table.iter()? {
             let (key, _) = result?;
-            let (file_class, file_entry, file_name) = key.value();
-            if file_class == class && file_entry == entry {
-                keys.push((file_class, file_entry, file_name));
+            let (file_category, file_entry, file_name) = key.value();
+            if file_category == category && file_entry == entry {
+                keys.push((file_category, file_entry, file_name));
             }
         }
         keys
@@ -70,7 +62,7 @@ pub async fn entry_delete(
     }
 
     // remove entry data from all tables
-    let entry_key = (class, entry);
+    let entry_key = (category, entry);
     {
         let mut entries_table = tx.open_table(ENTRIES)?;
         entries_table.remove(&entry_key)?;
@@ -108,7 +100,7 @@ fn err<M: ToString>(status: StatusCode, msg: M) -> (StatusCode, Json<serde_json:
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
-/// show home page with entries and classes
+/// show home page with entries and categories
 pub async fn home_page(
     jar: CookieJar,
     State(state): State<Arc<AppState>>,
@@ -116,13 +108,13 @@ pub async fn home_page(
     let tx = state.db.begin_read()?;
 
     let entries_table = tx.open_table(ENTRIES)?;
-    let mut entries: Vec<(Slug<ClassKey>, Slug<EntryKey>, EntryMeta)> = Vec::new();
-    let mut classes: BTreeSet<Slug<ClassKey>> = BTreeSet::new();
+    let mut entries: Vec<(Slug<CategoryKey>, Slug<EntryKey>, EntryMeta)> = Vec::new();
+    let mut categories: BTreeSet<Slug<CategoryKey>> = BTreeSet::new();
     for result in entries_table.iter()? {
         let (key, value) = result?;
-        let (class, entry) = key.value();
-        entries.push((class.clone(), entry, value.value()));
-        classes.insert(class);
+        let (category, entry) = key.value();
+        entries.push((category.clone(), entry, value.value()));
+        categories.insert(category);
     }
 
     // most recently updated first
@@ -131,20 +123,20 @@ pub async fn home_page(
     let base = CONFIG.base_path();
     let entries: Vec<serde_json::Value> = entries
         .into_iter()
-        .map(|(class, entry, meta)| {
+        .map(|(category, entry, meta)| {
             serde_json::json!({
-                "href": format!("{base}/{class}/{entry}/README.md"),
+                "href": format!("{base}/{category}/{entry}/README.md"),
                 "title": meta.title,
             })
         })
         .collect();
 
-    let classes: Vec<serde_json::Value> = classes
+    let categories: Vec<serde_json::Value> = categories
         .into_iter()
-        .map(|class| {
+        .map(|category| {
             serde_json::json!({
-                "href": format!("{base}/{class}/README.md"),
-                "title": class.to_string(),
+                "href": format!("{base}/{category}/README.md"),
+                "title": category.to_string(),
             })
         })
         .collect();
@@ -156,32 +148,32 @@ pub async fn home_page(
 
     let page = PageContext::new()
         .insert("page_title", "Home")
-        .insert("classes", &classes)
+        .insert("categories", &categories)
         .insert("entries", &entries)
         .insert("user", &user);
     Ok(Html(page.render("home.html")?))
 }
 
-// classes
+// categories
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
-/// show entries filtered by a class
-pub async fn class_page(
+/// show entries filtered by a category
+pub async fn category_page(
     jar: CookieJar,
     State(state): State<Arc<AppState>>,
-    Path(class): Path<String>,
+    Path(category): Path<String>,
 ) -> Result<Html<String>, AppError> {
-    let class = Slug::new(class).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let category = Slug::new(category).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
     let tx = state.db.begin_read()?;
 
     let entries_table = tx.open_table(ENTRIES)?;
-    let mut entries: Vec<(Slug<ClassKey>, Slug<EntryKey>, EntryMeta)> = Vec::new();
+    let mut entries: Vec<(Slug<CategoryKey>, Slug<EntryKey>, EntryMeta)> = Vec::new();
     for result in entries_table.iter()? {
         let (key, value) = result?;
-        let (entry_class, entry) = key.value();
-        if entry_class == class {
-            entries.push((entry_class, entry, value.value()));
+        let (entry_category, entry) = key.value();
+        if entry_category == category {
+            entries.push((entry_category, entry, value.value()));
         }
     }
 
@@ -191,9 +183,9 @@ pub async fn class_page(
     let base = CONFIG.base_path();
     let entries: Vec<serde_json::Value> = entries
         .into_iter()
-        .map(|(class, entry, meta)| {
+        .map(|(category, entry, meta)| {
             serde_json::json!({
-                "href": format!("{base}/{class}/{entry}/README.md"),
+                "href": format!("{base}/{category}/{entry}/README.md"),
                 "title": meta.title,
             })
         })
@@ -205,11 +197,11 @@ pub async fn class_page(
         .map(|session| session.inner.user);
 
     let page = PageContext::new()
-        .insert("page_title", &class)
-        .insert("class", &class)
+        .insert("page_title", &category)
+        .insert("category", &category)
         .insert("entries", &entries)
         .insert("user", &user);
-    Ok(Html(page.render("class.html")?))
+    Ok(Html(page.render("category.html")?))
 }
 
 // view
@@ -220,11 +212,11 @@ pub async fn class_page(
 pub async fn entry_page(
     jar: CookieJar,
     State(state): State<Arc<AppState>>,
-    Path((class, slug)): Path<(String, String)>,
+    Path((category, slug)): Path<(String, String)>,
 ) -> Result<Html<String>, AppError> {
-    let class = Slug::new(class).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let category = Slug::new(category).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
     let slug = Slug::new(slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
-    let key = (class, slug);
+    let key = (category, slug);
     let tx = state.db.begin_read()?;
 
     let entries_table = tx.open_table(ENTRIES)?;
@@ -258,9 +250,9 @@ pub async fn entry_page(
         .insert("page_title", &entry_meta.title)
         .insert("content", &body.value().html)
         .insert("user", &user)
-        .insert("class", &key.0)
+        .insert("category", &key.0)
         .insert("slug", &key.1)
-        .insert("page_class", &key.0)
+        .insert("page_category", &key.0)
         .insert("page_slug", &key.1)
         .insert("page_date", &date)
         .insert("page_editor", &entry_meta.editor);
@@ -305,15 +297,15 @@ pub async fn profile_page(
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
-/// download a file by class, entry and file slug
+/// download a file by category, entry and file slug
 pub async fn file_download(
     State(state): State<Arc<AppState>>,
-    Path((class, entry, file)): Path<(String, String, String)>,
+    Path((category, entry, file)): Path<(String, String, String)>,
 ) -> Result<(StatusCode, impl IntoResponse), AppError> {
-    let class = Slug::new(class).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let category = Slug::new(category).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
     let entry = Slug::new(entry).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
     let file = Slug::new(file).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
-    let key = (class, entry, file);
+    let key = (category, entry, file);
     let tx = state.db.begin_read()?;
 
     let files_table = tx.open_table(FILES)?;

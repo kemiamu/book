@@ -1,17 +1,12 @@
 use super::{err, internal_error};
-use axum::Json;
-use axum::extract::{Query, State};
-use axum::http::{HeaderMap, StatusCode};
 use axum::response::{Html, IntoResponse, Redirect};
+use axum::{Json, extract::Query, extract::State, http::HeaderMap, http::StatusCode};
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
-use book::CONFIG;
-use book::crypto::Signed;
-use book::error::AppError;
 use book::model::{AppState, PageContext, Passkey, Session, Slug, USERS, User, UserKey};
+use book::{CONFIG, crypto::Signed, error::AppError};
 use redb::{ReadableDatabase, ReadableTable};
 use serde::Deserialize;
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 /// show auth page (login + register unified)
 pub async fn auth_page(

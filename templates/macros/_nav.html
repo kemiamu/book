@@ -11,7 +11,7 @@
 <a href="{{ base_path }}/" class="text-muted">Back to Home</a>
 {% endmacro back_link %}
 
-{% macro page_header(title, current, breadcrumb_text, class, slug, user) %}
+{% macro page_header(title, current, breadcrumb_text, category, slug, user) %}
 <div class="page-header">
   <div>
     <h1 class="title mb-0 pb-2">{{ title }}</h1>
@@ -19,8 +19,8 @@
   </div>
   {% if user %}
   <div class="page-header-actions">
-    <a href="{{ base_path }}/edit?class={{ class }}&entry={{ slug }}" class="btn">Edit</a>
-    <a href="{{ base_path }}/upload?class={{ class }}&entry={{ slug }}" class="btn">Upload</a>
+    <a href="{{ base_path }}/edit?category={{ category }}&entry={{ slug }}" class="btn">Edit</a>
+    <a href="{{ base_path }}/upload?category={{ category }}&entry={{ slug }}" class="btn">Upload</a>
   </div>
   {% endif %}
 </div>

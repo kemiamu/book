@@ -128,8 +128,7 @@ pub mod error {
     // ++++++++++++============++++++++++++============++++++++++++============
 
     use crate::model::PageContext;
-    use axum::http::StatusCode;
-    use axum::response::{Html, IntoResponse, Response};
+    use axum::{http::StatusCode, response::Html, response::IntoResponse, response::Response};
 
     type BoxErr = Box<dyn std::error::Error + Send + Sync>;
 

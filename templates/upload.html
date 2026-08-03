@@ -7,7 +7,7 @@
 const BASE = "{{ base_path }}";
 function uploadApp() {
   return {
-    classSlug: "",
+    categorySlug: "",
     entrySlug: "",
     fileSlug: "",
     file: null,
@@ -17,7 +17,7 @@ function uploadApp() {
     _fileSlugEdited: false,
     init() {
       const el = this.$el;
-      this.classSlug = el.dataset.class || "";
+      this.categorySlug = el.dataset.category || "";
       this.entrySlug = el.dataset.entry || "";
     },
     onFileSelect(e) {
@@ -39,14 +39,14 @@ function uploadApp() {
       this.loading = true;
       try {
         const fd = new FormData();
-        fd.append("class_slug", this.classSlug);
+        fd.append("category_slug", this.categorySlug);
         fd.append("entry_slug", this.entrySlug);
         fd.append("file_slug", this.fileSlug);
         fd.append("file", this.file);
         const r = await fetch(BASE + "/upload", { method: "POST", body: fd });
         if (r.ok)
           window.location.href =
-            BASE + "/" + encodeURIComponent(this.classSlug) + "/" + encodeURIComponent(this.entrySlug) + "/README.md";
+            BASE + "/" + encodeURIComponent(this.categorySlug) + "/" + encodeURIComponent(this.entrySlug) + "/README.md";
         else {
           const d = await r.json();
           this.error = d.error || r.statusText;
@@ -65,7 +65,7 @@ function uploadApp() {
 <section class="section">
   <div class="container container-narrow">
     <h1 class="title">Upload File to Entry</h1>
-    <form x-data="uploadApp()" x-on:submit.prevent="submit" data-class="{{ default_class }}" data-entry="{{ default_entry }}">
+    <form x-data="uploadApp()" x-on:submit.prevent="submit" data-category="{{ default_category }}" data-entry="{{ default_entry }}">
       {{ form::input(label="File Slug", id="file_slug", model="fileSlug", required=true, placeholder="image.png", extra_attr='x-on:input="markFileSlugEdited"') }}
       <div class="field">
         <label class="label">File</label>
@@ -83,7 +83,7 @@ function uploadApp() {
         </div>
       </div>
       {% if default_entry %}
-        {% set cancel_url = base_path ~ "/" ~ default_class ~ "/" ~ default_entry ~ "/README.md" %}
+        {% set cancel_url = base_path ~ "/" ~ default_category ~ "/" ~ default_entry ~ "/README.md" %}
       {% else %}
         {% set cancel_url = base_path ~ "/" %}
       {% endif %}

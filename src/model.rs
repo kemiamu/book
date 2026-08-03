@@ -1,26 +1,23 @@
-use crate::crypto::{Mac, Signable, Signed};
-use crate::error::AppError;
-use crate::html::HtmlWriter;
-use axum::extract::FromRequestParts;
-use axum::http::StatusCode;
-use axum::http::request::Parts;
+use crate::{crypto::Mac, crypto::Signable, crypto::Signed, error::AppError, html::HtmlWriter};
+use axum::{extract::FromRequestParts, http::StatusCode, http::request::Parts};
 use axum_extra::extract::cookie::CookieJar;
 use redb::TableDefinition as Table;
-use std::borrow::Cow;
-use std::marker::PhantomData;
-use std::path::Path;
+use std::{borrow::Cow, marker::PhantomData, path::Path};
 
-/// entries table definition, keyed by (class, entry)
-pub const ENTRIES: Table<(Slug<ClassKey>, Slug<EntryKey>), EntryMeta> = Table::new("entries");
+/// entry key: (category, entry)
+pub type EntryPath = (Slug<CategoryKey>, Slug<EntryKey>);
+/// file key: (category, entry, file)
+pub type FilePath = (Slug<CategoryKey>, Slug<EntryKey>, Slug<FileKey>);
+
+/// entries table definition, keyed by (category, entry)
+pub const ENTRIES: Table<EntryPath, EntryMeta> = Table::new("entries");
 /// entry body table definition (raw markdown + rendered html)
-pub const ENTRY_BODY: Table<(Slug<ClassKey>, Slug<EntryKey>), EntryBody> = Table::new("entry_body");
+pub const ENTRY_BODY: Table<EntryPath, EntryBody> = Table::new("entry_body");
 
-/// files table definition, keyed by (class, entry, file)
-pub const FILES: Table<(Slug<ClassKey>, Slug<EntryKey>, Slug<FileKey>), FileMeta> =
-    Table::new("files");
+/// files table definition, keyed by (category, entry, file)
+pub const FILES: Table<FilePath, FileMeta> = Table::new("files");
 /// file blob table definition
-pub const FILE_BLOB: Table<(Slug<ClassKey>, Slug<EntryKey>, Slug<FileKey>), Vec<u8>> =
-    Table::new("file_blob");
+pub const FILE_BLOB: Table<FilePath, Vec<u8>> = Table::new("file_blob");
 
 /// users table definition
 pub const USERS: Table<Slug<UserKey>, User> = Table::new("users");
@@ -369,7 +366,7 @@ macro_rules! slug_key {
     };
 }
 
-slug_key!(ClassKey, 255, '-' | '_');
+slug_key!(CategoryKey, 255, '-' | '_');
 slug_key!(EntryKey, 255, '-' | '_');
 slug_key!(FileKey, 255, '-' | '_' | '.');
 slug_key!(UserKey, 32, '-' | '_');
@@ -493,12 +490,12 @@ impl_stored!(EntryMeta);
 impl_stored!(Markdown);
 impl_stored!(EntryBody);
 impl_stored!(User);
-impl_stored!(Slug<ClassKey>);
+impl_stored!(Slug<CategoryKey>);
 impl_stored!(Slug<EntryKey>);
 impl_stored!(Slug<FileKey>);
 impl_stored!(Slug<UserKey>);
 
-impl_key!(Slug<ClassKey>);
+impl_key!(Slug<CategoryKey>);
 impl_key!(Slug<EntryKey>);
 impl_key!(Slug<FileKey>);
 impl_key!(Slug<UserKey>);
