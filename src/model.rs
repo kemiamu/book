@@ -345,7 +345,7 @@ pub struct Slug(Cow<'static, str>);
 impl Slug {
     /// check if a char is allowed in a slug
     fn is_slug_char(ch: char) -> bool {
-        ch.is_ascii_alphanumeric() || ch == '-' || ch == '_'
+        ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' || ch == '.'
     }
 
     /// validate and create a new slug
@@ -356,7 +356,7 @@ impl Slug {
         } else if cow.len() > 255 {
             Err("slug must be at most 255 bytes")
         } else if !cow.chars().all(Self::is_slug_char) {
-            Err("slug may only contain a-z, A-Z, 0-9, '-' and '_'")
+            Err("slug may only contain a-z, A-Z, 0-9, '-', '_' and '.'")
         } else {
             Ok(Self(cow))
         }

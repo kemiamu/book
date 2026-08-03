@@ -1,4 +1,6 @@
 /target
 /public
 /server.toml
-/data.redb
+
+/*.redb
+/*.redb.old
