@@ -6,12 +6,10 @@ use axum_extra::extract::cookie::CookieJar;
 use book::CONFIG;
 use book::crypto::Signed;
 use book::error::AppError;
-use book::model::{AppState, EntryBody, EntryMeta, Markdown, PageContext, Slug};
-use book::model::{ENTRIES, ENTRY_BODY};
-use book::model::{Session, UserToken};
+use book::model::{AppState, ENTRIES, ENTRY_BODY, EntryBody, EntryMeta};
+use book::model::{Markdown, PageContext, Session, Slug, UserToken};
 use redb::ReadableDatabase;
 use serde::Deserialize;
-
 use std::sync::Arc;
 
 #[derive(Deserialize)]

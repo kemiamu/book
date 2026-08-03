@@ -1,6 +1,5 @@
 use crate::crypto::{Signable, Signed};
-use crate::model::Slug;
-use crate::model::Username;
+use crate::model::{Slug, Username};
 use std::collections::HashSet;
 
 #[test]

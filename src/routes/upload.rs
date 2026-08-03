@@ -6,9 +6,7 @@ use axum_extra::extract::cookie::CookieJar;
 use book::CONFIG;
 use book::crypto::Signed;
 use book::error::AppError;
-use book::model::FileMeta;
-use book::model::{AppState, PageContext, Session, Slug, UserToken};
-use book::model::{FILE_BLOB, FILES};
+use book::model::{AppState, FILE_BLOB, FILES, FileMeta, PageContext, Session, Slug, UserToken};
 use serde::Deserialize;
 use std::sync::Arc;
 
