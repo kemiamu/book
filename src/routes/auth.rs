@@ -10,7 +10,7 @@ use book::crypto::Signed;
 use book::error::AppError;
 use book::model::PageContext;
 use book::model::USERS;
-use book::model::{AppState, Passkey, Session, Slug, User};
+use book::model::{AppState, Passkey, Session, User, Username};
 use redb::ReadableDatabase;
 use redb::ReadableTable;
 use serde::Deserialize;
@@ -59,13 +59,13 @@ pub async fn sign_in_post(
     let _passkey = Signed::<Passkey>::parse(&body.passkey, &CONFIG.secret)
         .ok_or_else(|| err(StatusCode::UNAUTHORIZED, "Invalid or expired passkey"))?;
 
-    let username = Slug::new(body.username.clone()).map_err(|e| err(StatusCode::BAD_REQUEST, e))?;
+    let username = Username::new(body.username).map_err(|e| err(StatusCode::BAD_REQUEST, e))?;
 
     let tx = state.db.begin_read().map_err(internal_error)?;
     let table = tx.open_table(USERS).map_err(internal_error)?;
 
     let user = table
-        .get(username)
+        .get(&username)
         .map_err(internal_error)?
         .ok_or_else(|| err(StatusCode::UNAUTHORIZED, "Invalid username or password"))?
         .value();
@@ -77,7 +77,7 @@ pub async fn sign_in_post(
         ));
     }
 
-    let jar = set_session_cookie(jar, &body.username, &CONFIG.secret);
+    let jar = set_session_cookie(jar, username, &CONFIG.secret);
     Ok((jar, Json(serde_json::json!({}))))
 }
 
@@ -102,25 +102,21 @@ pub async fn sign_up_post(
     let passkey = Signed::<Passkey>::parse(&body.passkey, &CONFIG.secret)
         .ok_or_else(|| err(StatusCode::UNAUTHORIZED, "Invalid or expired passkey"))?;
 
-    let username = Slug::new(body.username.clone()).map_err(|e| err(StatusCode::BAD_REQUEST, e))?;
+    let username = Username::new(body.username).map_err(|e| err(StatusCode::BAD_REQUEST, e))?;
 
     let tx = state.db.begin_write().map_err(internal_error)?;
     let mut table = tx.open_table(USERS).map_err(internal_error)?;
 
-    if table
-        .get(username.clone())
-        .map_err(internal_error)?
-        .is_some()
-    {
+    if table.get(&username).map_err(internal_error)?.is_some() {
         return Err(err(StatusCode::CONFLICT, "Username already exists"));
     }
 
     let user = User::new(&body.password, &CONFIG.secret, passkey.inner.creator);
-    table.insert(username, user).map_err(internal_error)?;
+    table.insert(&username, user).map_err(internal_error)?;
     drop(table);
     tx.commit().map_err(internal_error)?;
 
-    let jar = set_session_cookie(jar, &body.username, &CONFIG.secret);
+    let jar = set_session_cookie(jar, username, &CONFIG.secret);
     Ok((jar, Json(serde_json::json!({}))))
 }
 
@@ -143,8 +139,8 @@ pub async fn sign_out(jar: CookieJar, headers: HeaderMap) -> impl IntoResponse {
 // ++++++++++++============++++++++++++============++++++++++++============
 
 /// set session cookie on the jar
-fn set_session_cookie(jar: CookieJar, username: impl AsRef<str>, secret: &str) -> CookieJar {
-    let token = Signed::new(Session::new(username.as_ref())).generate(secret);
+fn set_session_cookie(jar: CookieJar, username: Username, secret: &str) -> CookieJar {
+    let token = Signed::new(Session::new(username)).generate(secret);
     let cookie = Cookie::build(("session", token))
         .path("/")
         .max_age(time::Duration::seconds(Session::EXPIRY_SECS))

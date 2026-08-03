@@ -1,6 +1,6 @@
 use book::crypto::Signed;
 use book::model::{ENTRIES, ENTRY_BODY, FILE_BLOB, FILES, USERS};
-use book::model::{Passkey, Slug, User};
+use book::model::{Passkey, User, Username};
 use clap::Parser;
 use time::OffsetDateTime;
 use time::format_description::well_known::Iso8601;
@@ -69,8 +69,8 @@ impl InitUser {
         let tx = db.begin_write().unwrap();
         {
             let mut users = tx.open_table(USERS).unwrap();
-            let user = User::new(&self.password, &book::CONFIG.secret, &self.username);
-            let username = Slug::new(self.username.clone()).expect("invalid username");
+            let username = Username::new(self.username.clone()).expect("invalid username");
+            let user = User::new(&self.password, &book::CONFIG.secret, username.clone());
             users.insert(username, user).unwrap();
         }
         tx.commit().unwrap();
@@ -85,27 +85,32 @@ impl InitUser {
 
 #[derive(clap::Args)]
 /// Generate a passkey
-struct GenPasskey;
+struct GenPasskey {
+    /// Username the passkey belongs to
+    username: String,
+}
 
 impl GenPasskey {
     /// run the command
     fn run(&self) {
-        gen_passkey("")
+        let creator = Username::new(self.username.clone()).expect("invalid username");
+        gen_passkey(creator);
     }
 }
 
-fn gen_passkey(creator: &str) {
+fn gen_passkey(creator: Username) {
+    println!("Passkey for '{}':", creator);
     let passkey = Passkey::new(creator);
-    let signed = Signed::new(passkey.clone());
+    let expires_at = passkey.expires_at;
+    let signed = Signed::new(passkey);
     let code = signed.generate(&book::CONFIG.secret);
 
-    let expires_at = OffsetDateTime::from_unix_timestamp(passkey.expires_at)
+    let expires_at = OffsetDateTime::from_unix_timestamp(expires_at)
         .ok()
         .and_then(|d| d.format(&Iso8601::DATE).ok())
         .unwrap_or_default();
 
     let url = format!("{}/auth?passkey={}", book::CONFIG.base_url, code);
-    println!("Passkey for '{}':", creator);
     println!("  Code:    {}", &code[..32]);
     println!("  URL:     {url}");
     println!("  Expires: {expires_at}");

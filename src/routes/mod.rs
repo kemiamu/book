@@ -52,27 +52,27 @@ pub async fn entry_delete(
     // remove file blobs
     {
         let mut blobs_table = tx.open_table(FILE_BLOB)?;
-        for (entry, file) in &files_to_remove {
-            blobs_table.remove((entry.clone(), file.clone()))?;
+        for key in &files_to_remove {
+            blobs_table.remove(key)?;
         }
     }
 
     // remove file metadata
     {
         let mut files_table = tx.open_table(FILES)?;
-        for (entry, file) in &files_to_remove {
-            files_table.remove((entry.clone(), file.clone()))?;
+        for key in &files_to_remove {
+            files_table.remove(key)?;
         }
     }
 
     // remove entry data from all tables
     {
         let mut entries_table = tx.open_table(ENTRIES)?;
-        entries_table.remove(slug.clone())?;
+        entries_table.remove(&slug)?;
     }
     {
         let mut body_table = tx.open_table(ENTRY_BODY)?;
-        body_table.remove(slug)?;
+        body_table.remove(&slug)?;
     }
 
     tx.commit()?;
@@ -152,7 +152,7 @@ pub async fn entry_page(
     let tx = state.db.begin_read()?;
 
     let entries_table = tx.open_table(ENTRIES)?;
-    let Some(row) = entries_table.get(slug.clone())? else {
+    let Some(row) = entries_table.get(&slug)? else {
         return Err(AppError::new(
             StatusCode::NOT_FOUND,
             format!("entry not found: {slug}"),
@@ -160,7 +160,7 @@ pub async fn entry_page(
     };
 
     let body_table = tx.open_table(ENTRY_BODY)?;
-    let Some(body) = body_table.get(slug.clone())? else {
+    let Some(body) = body_table.get(&slug)? else {
         return Err(AppError::new(
             StatusCode::NOT_FOUND,
             format!("entry body not found: {slug}"),
@@ -203,11 +203,12 @@ pub async fn profile_page(
         .and_then(|c| Signed::<Session>::parse(c.value(), &CONFIG.secret))
         .map(|s| s.inner.user);
 
-    let passkey = Passkey::new(&token?);
-    let signed = Signed::new(passkey.clone());
+    let passkey = Passkey::new(token?);
+    let expires_at = passkey.expires_at;
+    let signed = Signed::new(passkey);
     let code = signed.generate(&CONFIG.secret);
 
-    let expires_at = OffsetDateTime::from_unix_timestamp(passkey.expires_at)
+    let expires_at = OffsetDateTime::from_unix_timestamp(expires_at)
         .ok()
         .and_then(|d| d.format(&Iso8601::DATE).ok())
         .unwrap_or_default();
@@ -234,35 +235,36 @@ pub async fn file_download(
     let entry_slug =
         Slug::new(entry_slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
     let file_slug = Slug::new(file_slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let key = (entry_slug, file_slug);
     let tx = state.db.begin_read()?;
 
     let files_table = tx.open_table(FILES)?;
-    let Some(_meta) = files_table.get((entry_slug.clone(), file_slug.clone()))? else {
+    let Some(_meta) = files_table.get(&key)? else {
         return Err(AppError::new(
             StatusCode::NOT_FOUND,
-            format!("file not found: {entry_slug}/{file_slug}"),
+            format!("file not found: {}/{}", key.0, key.1),
         ));
     };
     drop(files_table);
 
     let blobs_table = tx.open_table(FILE_BLOB)?;
-    let Some(blob) = blobs_table.get((entry_slug.clone(), file_slug.clone()))? else {
+    let Some(blob) = blobs_table.get(&key)? else {
         return Err(AppError::new(
             StatusCode::NOT_FOUND,
-            format!("file blob not found: {entry_slug}/{file_slug}"),
+            format!("file blob not found: {}/{}", key.0, key.1),
         ));
     };
     let data = blob.value();
     drop(blobs_table);
 
-    let content_type = mime_guess::from_path(file_slug.as_ref())
-        .first_or(mime_guess::mime::APPLICATION_OCTET_STREAM);
+    let content_type =
+        mime_guess::from_path(key.1.as_ref()).first_or(mime_guess::mime::APPLICATION_OCTET_STREAM);
 
     let headers = [
         ("Content-Type", content_type.to_string()),
         (
             "Content-Disposition",
-            format!("inline; filename=\"{}\"", file_slug),
+            format!("inline; filename=\"{}\"", key.1),
         ),
     ];
 

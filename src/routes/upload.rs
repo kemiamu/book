@@ -116,13 +116,13 @@ pub async fn file_upload_post(
     let tx = state.db.begin_write()?;
 
     let mut files_table = tx.open_table(FILES)?;
-    let key = (entry_slug.clone(), file_slug.clone());
-    let meta = FileMeta::new(&username);
-    files_table.insert(key, meta)?;
+    let key = (entry_slug, file_slug);
+    let meta = FileMeta::new(username);
+    files_table.insert(&key, meta)?;
     drop(files_table);
 
     let mut blobs_table = tx.open_table(FILE_BLOB)?;
-    blobs_table.insert((entry_slug, file_slug), data)?;
+    blobs_table.insert(&key, data)?;
     drop(blobs_table);
 
     tx.commit()?;

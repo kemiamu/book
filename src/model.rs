@@ -19,7 +19,7 @@ pub const FILES: Table<(Slug, Slug), FileMeta> = Table::new("files");
 pub const FILE_BLOB: Table<(Slug, Slug), Vec<u8>> = Table::new("file_blob");
 
 /// users table definition
-pub const USERS: Table<Slug, User> = Table::new("users");
+pub const USERS: Table<Username, User> = Table::new("users");
 
 /// application state
 pub struct AppState {
@@ -61,13 +61,13 @@ impl PageContext {
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// file metadata
 pub struct FileMeta {
-    pub editor: String,
+    pub editor: Username,
     pub last_modified: i64,
 }
 
 impl FileMeta {
     /// create new resource metadata with current timestamp
-    pub fn new(editor: impl Into<String>) -> Self {
+    pub fn new(editor: impl Into<Username>) -> Self {
         Self {
             editor: editor.into(),
             last_modified: time::UtcDateTime::now().unix_timestamp(),
@@ -80,13 +80,17 @@ impl FileMeta {
 pub struct EntryMeta {
     pub title: String,
     pub tags: HashSet<String>,
-    pub editor: String,
+    pub editor: Username,
     pub last_modified: i64,
 }
 
 impl EntryMeta {
     /// create new entry metadata
-    pub fn new(title: impl Into<String>, editor: impl Into<String>, tags: HashSet<String>) -> Self {
+    pub fn new(
+        title: impl Into<String>,
+        editor: impl Into<Username>,
+        tags: HashSet<String>,
+    ) -> Self {
         Self {
             title: title.into(),
             tags,
@@ -145,7 +149,7 @@ impl EntryBody {
 /// a registered user
 pub struct User {
     password: Mac,
-    pub parent: String,
+    pub parent: Username,
 }
 
 impl User {
@@ -155,7 +159,7 @@ impl User {
     pub fn new(
         password: impl AsRef<[u8]>,
         secret: impl AsRef<[u8]>,
-        parent: impl Into<String>,
+        parent: impl Into<Username>,
     ) -> Self {
         let password = Mac::new(password, secret, Self::PASSWD_TAG);
         let parent = parent.into();
@@ -176,7 +180,7 @@ impl User {
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// authorization passkey token
 pub struct Passkey {
-    pub creator: String,
+    pub creator: Username,
     pub expires_at: i64,
 }
 
@@ -184,7 +188,7 @@ impl Passkey {
     pub const EXPIRY_SECS: i64 = 7 * 24 * 60 * 60;
 
     /// create a new passkey
-    pub fn new(creator: impl Into<String>) -> Self {
+    pub fn new(creator: impl Into<Username>) -> Self {
         let now = time::UtcDateTime::now().unix_timestamp();
         Self {
             creator: creator.into(),
@@ -219,7 +223,7 @@ impl Signable for Passkey {
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// user session token
 pub struct Session {
-    pub user: String,
+    pub user: Username,
     pub expires_at: i64,
 }
 
@@ -227,7 +231,7 @@ impl Session {
     pub const EXPIRY_SECS: i64 = 3650 * 24 * 60 * 60;
 
     /// create a new session
-    pub fn new(user: impl Into<String>) -> Self {
+    pub fn new(user: impl Into<Username>) -> Self {
         let now = time::UtcDateTime::now().unix_timestamp();
         Self {
             user: user.into(),
@@ -257,7 +261,7 @@ impl Signable for Session {
 
 /// authenticated user extracted from session cookie
 #[derive(Debug)]
-pub struct UserToken(pub Result<String, AppError>);
+pub struct UserToken(pub Result<Username, AppError>);
 
 impl<S: Send + Sync + 'static> FromRequestParts<S> for UserToken {
     type Rejection = std::convert::Infallible;
@@ -289,6 +293,9 @@ impl<S: Send + Sync + 'static> FromRequestParts<S> for UserToken {
 // slug
 //
 // ++++++++++++============++++++++++++============++++++++++++============
+
+/// username alias of slug: a slug with the meaning of a user identifier
+pub type Username = Slug;
 
 /// validated slug: non-empty, single URL path segment
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

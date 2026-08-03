@@ -1,5 +1,6 @@
 use crate::crypto::{Signable, Signed};
 use crate::model::Slug;
+use crate::model::Username;
 use std::collections::HashSet;
 
 #[test]
@@ -20,10 +21,10 @@ fn entry_meta_basics() {
     let mut tags = HashSet::new();
     tags.insert("rust".to_string());
 
-    let meta = crate::model::EntryMeta::new("Hello", "alice", tags);
+    let meta = crate::model::EntryMeta::new("Hello", Username::new("alice").unwrap(), tags);
 
     assert_eq!(meta.title, "Hello");
-    assert_eq!(meta.editor, "alice");
+    assert_eq!(meta.editor.as_ref(), "alice");
     assert!(meta.tags.contains("rust"));
     assert!(meta.last_modified > 0);
 }
@@ -38,7 +39,7 @@ fn markdown_renders_html() {
 
 #[test]
 fn user_password_verify() {
-    let user = crate::model::User::new("mypass", "mysecret", "admin");
+    let user = crate::model::User::new("mypass", "mysecret", Username::new("admin").unwrap());
     assert!(user.verify("mypass", "mysecret"));
     assert!(!user.verify("wrong", "mysecret"));
     assert!(!user.verify("mypass", "wrong"));
@@ -46,24 +47,24 @@ fn user_password_verify() {
 
 #[test]
 fn session_expiry() {
-    let s = crate::model::Session::new("alice");
-    assert_eq!(s.user, "alice");
+    let s = crate::model::Session::new(Username::new("alice").unwrap());
+    assert_eq!(s.user.as_ref(), "alice");
     assert!(s.expires_at > time::UtcDateTime::now().unix_timestamp());
     assert!(s.is_valid());
 }
 
 #[test]
 fn passkey_roundtrip() {
-    let pk = crate::model::Passkey::new("alice");
+    let pk = crate::model::Passkey::new(Username::new("alice").unwrap());
     let bytes = pk.serialize();
     let restored = crate::model::Passkey::deserialize(&bytes).unwrap();
-    assert_eq!(restored.creator, "alice");
+    assert_eq!(restored.creator.as_ref(), "alice");
     assert_eq!(restored.expires_at, pk.expires_at);
 }
 
 #[test]
 fn signed_generate_and_parse() {
-    let pk = crate::model::Passkey::new("bob");
+    let pk = crate::model::Passkey::new(Username::new("bob").unwrap());
     let secret = "test-secret";
 
     let signed = Signed::new(pk);
@@ -71,7 +72,7 @@ fn signed_generate_and_parse() {
 
     let parsed = Signed::<crate::model::Passkey>::parse(&token, secret);
     assert!(parsed.is_some());
-    assert_eq!(parsed.unwrap().inner.creator, "bob");
+    assert_eq!(parsed.unwrap().inner.creator.as_ref(), "bob");
 }
 
 #[test]
@@ -85,7 +86,7 @@ fn heading_attributes_parsed() {
 
 #[test]
 fn signed_tampered_token_fails() {
-    let pk = crate::model::Passkey::new("bob");
+    let pk = crate::model::Passkey::new(Username::new("bob").unwrap());
     let secret = "test-secret";
 
     let signed = Signed::new(pk);

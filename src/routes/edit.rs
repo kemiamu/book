@@ -34,7 +34,7 @@ pub async fn edit_page(
         let tx = state.db.begin_read()?;
 
         let entries_table = tx.open_table(ENTRIES)?;
-        let meta = entries_table.get(entry_slug.clone())?.ok_or_else(|| {
+        let meta = entries_table.get(&entry_slug)?.ok_or_else(|| {
             AppError::new(
                 StatusCode::NOT_FOUND,
                 format!("entry not found: {entry_slug}"),
@@ -42,7 +42,7 @@ pub async fn edit_page(
         })?;
 
         let bodies_table = tx.open_table(ENTRY_BODY)?;
-        let body = bodies_table.get(entry_slug.clone())?.ok_or_else(|| {
+        let body = bodies_table.get(&entry_slug)?.ok_or_else(|| {
             AppError::new(
                 StatusCode::NOT_FOUND,
                 format!("entry body not found: {entry_slug}"),
@@ -51,7 +51,7 @@ pub async fn edit_page(
 
         (
             entry_slug.to_string(),
-            meta.value().title.clone(),
+            meta.value().title,
             body.value().raw.into_inner(),
         )
     } else {
@@ -90,8 +90,7 @@ pub async fn edit_post(
 
     let username = token?;
 
-    let slug =
-        Slug::new(body.slug.clone()).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let slug = Slug::new(body.slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
 
     // a fresh entry can be created with just a slug; fall back to the slug
     // as the title until a real one is provided
@@ -102,19 +101,19 @@ pub async fn edit_post(
     };
 
     let mut entries_table = tx.open_table(ENTRIES)?;
-    let existing = entries_table.get(slug.clone())?.map(|g| g.value());
+    let existing = entries_table.get(&slug)?.map(|g| g.value());
     let meta = EntryMeta::new(
         title,
-        &username,
+        username,
         existing.map(|m| m.tags).unwrap_or_default(),
     );
-    entries_table.insert(slug.clone(), meta)?;
+    entries_table.insert(&slug, meta)?;
     drop(entries_table);
 
-    let md = Markdown::new(body.body.clone());
+    let md = Markdown::new(body.body);
 
     let mut body_table = tx.open_table(ENTRY_BODY)?;
-    body_table.insert(slug, EntryBody::new(md))?;
+    body_table.insert(&slug, EntryBody::new(md))?;
     drop(body_table);
 
     tx.commit()?;
