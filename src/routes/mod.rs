@@ -7,7 +7,7 @@ use book::CONFIG;
 use book::crypto::Signed;
 use book::error::AppError;
 use book::model::{AppState, EntryMeta, PageContext, Passkey, Session, Slug, UserToken};
-use book::model::{ENTRIES, ENTRY_HTML, ENTRY_RAW, FILE_BLOB, FILES};
+use book::model::{ENTRIES, ENTRY_BODY, FILE_BLOB, FILES};
 use redb::{ReadableDatabase, ReadableTable};
 use std::sync::Arc;
 use time::OffsetDateTime;
@@ -71,12 +71,8 @@ pub async fn entry_delete(
         entries_table.remove(slug.clone())?;
     }
     {
-        let mut raw_table = tx.open_table(ENTRY_RAW)?;
-        raw_table.remove(slug.clone())?;
-    }
-    {
-        let mut html_table = tx.open_table(ENTRY_HTML)?;
-        html_table.remove(slug)?;
+        let mut body_table = tx.open_table(ENTRY_BODY)?;
+        body_table.remove(slug)?;
     }
 
     tx.commit()?;
@@ -163,8 +159,8 @@ pub async fn entry_page(
         ));
     };
 
-    let html_table = tx.open_table(ENTRY_HTML)?;
-    let Some(body) = html_table.get(slug.clone())? else {
+    let body_table = tx.open_table(ENTRY_BODY)?;
+    let Some(body) = body_table.get(slug.clone())? else {
         return Err(AppError::new(
             StatusCode::NOT_FOUND,
             format!("entry body not found: {slug}"),
@@ -184,7 +180,7 @@ pub async fn entry_page(
 
     let page = PageContext::new()
         .insert("page_title", &entry_meta.title)
-        .insert("content", &body.value())
+        .insert("content", &body.value().html)
         .insert("user", &user)
         .insert("slug", &slug)
         .insert("page_date", &date)

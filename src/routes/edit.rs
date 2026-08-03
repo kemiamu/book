@@ -6,8 +6,8 @@ use axum_extra::extract::cookie::CookieJar;
 use book::CONFIG;
 use book::crypto::Signed;
 use book::error::AppError;
-use book::model::{AppState, EntryMeta, Markdown, PageContext, Slug};
-use book::model::{ENTRIES, ENTRY_HTML, ENTRY_RAW};
+use book::model::{AppState, EntryBody, EntryMeta, Markdown, PageContext, Slug};
+use book::model::{ENTRIES, ENTRY_BODY};
 use book::model::{Session, UserToken};
 use redb::{ReadableDatabase, ReadableTable};
 use serde::Deserialize;
@@ -41,7 +41,7 @@ pub async fn edit_page(
             )
         })?;
 
-        let bodies_table = tx.open_table(ENTRY_RAW)?;
+        let bodies_table = tx.open_table(ENTRY_BODY)?;
         let body = bodies_table.get(entry_slug.clone())?.ok_or_else(|| {
             AppError::new(
                 StatusCode::NOT_FOUND,
@@ -52,7 +52,7 @@ pub async fn edit_page(
         (
             entry_slug.to_string(),
             meta.value().title.clone(),
-            body.value().into_inner(),
+            body.value().raw.into_inner(),
         )
     } else {
         (String::new(), String::new(), String::new())
@@ -112,15 +112,10 @@ pub async fn edit_post(
     drop(entries_table);
 
     let md = Markdown::new(body.body.clone());
-    let html = md.render();
 
-    let mut raw_table = tx.open_table(ENTRY_RAW)?;
-    raw_table.insert(slug.clone(), md)?;
-    drop(raw_table);
-
-    let mut html_table = tx.open_table(ENTRY_HTML)?;
-    html_table.insert(slug, html)?;
-    drop(html_table);
+    let mut body_table = tx.open_table(ENTRY_BODY)?;
+    body_table.insert(slug, EntryBody::new(md))?;
+    drop(body_table);
 
     tx.commit()?;
 

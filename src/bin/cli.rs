@@ -1,5 +1,5 @@
 use book::crypto::Signed;
-use book::model::{ENTRIES, ENTRY_HTML, ENTRY_RAW, FILE_BLOB, FILES, USERS};
+use book::model::{ENTRIES, ENTRY_BODY, FILE_BLOB, FILES, USERS};
 use book::model::{Passkey, Slug, User};
 use clap::Parser;
 use time::OffsetDateTime;
@@ -37,8 +37,7 @@ impl InitTables {
         let tx = db.begin_write().unwrap();
         {
             tx.open_table(ENTRIES).unwrap();
-            tx.open_table(ENTRY_RAW).unwrap();
-            tx.open_table(ENTRY_HTML).unwrap();
+            tx.open_table(ENTRY_BODY).unwrap();
             tx.open_table(FILES).unwrap();
             tx.open_table(FILE_BLOB).unwrap();
             tx.open_table(USERS).unwrap();

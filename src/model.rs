@@ -10,10 +10,8 @@ use std::collections::HashSet;
 
 /// entries table definition
 pub const ENTRIES: Table<Slug, EntryMeta> = Table::new("entries");
-/// entry raw markdown table definition
-pub const ENTRY_RAW: Table<Slug, Markdown> = Table::new("entry_raw");
-/// entry rendered html table definition
-pub const ENTRY_HTML: Table<Slug, String> = Table::new("entry_html");
+/// entry body table definition (raw markdown + rendered html)
+pub const ENTRY_BODY: Table<Slug, EntryBody> = Table::new("entry_body");
 
 /// files table definition
 pub const FILES: Table<(Slug, Slug), FileMeta> = Table::new("files");
@@ -121,6 +119,21 @@ impl Markdown {
         let mut html_output: String = Default::default();
         HtmlWriter::new(parser, &mut html_output).run().unwrap();
         html_output
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+/// entry content: raw markdown plus its rendered html
+pub struct EntryBody {
+    pub raw: Markdown,
+    pub html: String,
+}
+
+impl EntryBody {
+    /// render a new body from markdown
+    pub fn new(md: Markdown) -> Self {
+        let html = md.render();
+        Self { raw: md, html }
     }
 }
 
@@ -353,7 +366,6 @@ impl redb::Key for Slug {
 // ++++++++++++============++++++++++++============++++++++++++============
 
 /// implement redb::Value via postcard for a serde type
-#[macro_export]
 macro_rules! impl_stored {
     ($ty:ty) => {
         impl redb::Value for $ty {
@@ -394,5 +406,6 @@ macro_rules! impl_stored {
 impl_stored!(FileMeta);
 impl_stored!(EntryMeta);
 impl_stored!(Markdown);
+impl_stored!(EntryBody);
 impl_stored!(User);
 impl_stored!(Slug);
