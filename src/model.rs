@@ -28,7 +28,7 @@ pub struct AppState {
     pub db: redb::Database,
 }
 
-/// create the database and all tables (idempotent; write transaction creates missing tables)
+/// create the database and all tables, printing a bootstrap passkey
 pub fn init_tables<P: AsRef<Path>>(path: P) -> Result<redb::Database, redb::Error> {
     let db = redb::Database::create(path)?;
     let tx = db.begin_write()?;
@@ -38,6 +38,11 @@ pub fn init_tables<P: AsRef<Path>>(path: P) -> Result<redb::Database, redb::Erro
     tx.open_table(FILE_BLOB)?;
     tx.open_table(USERS)?;
     tx.commit()?;
+
+    let base_url = &crate::CONFIG.base_url;
+    let passkey = Signed::new(Passkey::bootstrap()).generate(&crate::CONFIG.secret);
+    tracing::info!("Bootstrap passkey: {base_url}/auth?passkey={passkey}");
+
     Ok(db)
 }
 
