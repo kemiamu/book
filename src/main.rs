@@ -34,12 +34,13 @@ async fn main() {
         .route("/edit", post(routes::edit_post))
         .route("/upload", get(routes::file_upload_page))
         .route("/upload", post(routes::file_upload_post))
-        // view / download
-        .route("/{entry}/README.md", get(routes::entry_page))
-        .route("/tags/{tag}/README.md", get(routes::tags_page))
-        .route("/{entry}/{file}", get(routes::file_download))
-        .route("/{entry}/delete", post(routes::entry_delete))
+        // view / download / delete
+        .route("/{class}/README.md", get(routes::class_page))
+        .route("/{class}/{entry}/README.md", get(routes::entry_page))
+        .route("/{class}/{entry}/{file}", get(routes::file_download))
+        .route("/{class}/{entry}/delete", post(routes::entry_delete))
         // static files
+        .route("/robots.txt", get(routes::robots_txt))
         .nest_service("/img", ServeDir::new("public/img"))
         .nest_service("/css", ServeDir::new("public/css"))
         .nest_service("/js", ServeDir::new("public/js"))

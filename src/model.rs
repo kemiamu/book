@@ -7,19 +7,20 @@ use axum::http::request::Parts;
 use axum_extra::extract::cookie::CookieJar;
 use redb::TableDefinition as Table;
 use std::borrow::Cow;
-use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::path::Path;
 
-/// entries table definition
-pub const ENTRIES: Table<Slug<EntryKey>, EntryMeta> = Table::new("entries");
+/// entries table definition, keyed by (class, entry)
+pub const ENTRIES: Table<(Slug<ClassKey>, Slug<EntryKey>), EntryMeta> = Table::new("entries");
 /// entry body table definition (raw markdown + rendered html)
-pub const ENTRY_BODY: Table<Slug<EntryKey>, EntryBody> = Table::new("entry_body");
+pub const ENTRY_BODY: Table<(Slug<ClassKey>, Slug<EntryKey>), EntryBody> = Table::new("entry_body");
 
-/// files table definition
-pub const FILES: Table<(Slug<EntryKey>, Slug<FileKey>), FileMeta> = Table::new("files");
+/// files table definition, keyed by (class, entry, file)
+pub const FILES: Table<(Slug<ClassKey>, Slug<EntryKey>, Slug<FileKey>), FileMeta> =
+    Table::new("files");
 /// file blob table definition
-pub const FILE_BLOB: Table<(Slug<EntryKey>, Slug<FileKey>), Vec<u8>> = Table::new("file_blob");
+pub const FILE_BLOB: Table<(Slug<ClassKey>, Slug<EntryKey>, Slug<FileKey>), Vec<u8>> =
+    Table::new("file_blob");
 
 /// users table definition
 pub const USERS: Table<Slug<UserKey>, User> = Table::new("users");
@@ -60,6 +61,7 @@ impl PageContext {
         let mut ctx = tera::Context::new();
         ctx.insert("site_title", &crate::CONFIG.site_title);
         ctx.insert("base_url", &crate::CONFIG.base_url);
+        ctx.insert("base_path", &crate::CONFIG.base_path());
         Self(ctx)
     }
 
@@ -100,22 +102,29 @@ impl FileMeta {
 /// metadata for entries
 pub struct EntryMeta {
     pub title: String,
-    pub tags: HashSet<Slug<TagKey>>,
     pub editor: Slug<UserKey>,
+    pub created_at: i64,
     pub last_modified: i64,
 }
 
 impl EntryMeta {
     /// create new entry metadata
-    pub fn new<T: Into<String>, E: Into<Slug<UserKey>>, I: IntoIterator<Item = Slug<TagKey>>>(
-        title: T,
-        editor: E,
-        tags: I,
-    ) -> Self {
+    pub fn new<T: Into<String>, E: Into<Slug<UserKey>>>(title: T, editor: E) -> Self {
+        let now = time::UtcDateTime::now().unix_timestamp();
         Self {
             title: title.into(),
-            tags: tags.into_iter().collect(),
             editor: editor.into(),
+            created_at: now,
+            last_modified: now,
+        }
+    }
+
+    /// update metadata, preserving the creation time
+    pub fn update<T: Into<String>, E: Into<Slug<UserKey>>>(&self, title: T, editor: E) -> Self {
+        Self {
+            title: title.into(),
+            editor: editor.into(),
+            created_at: self.created_at,
             last_modified: time::UtcDateTime::now().unix_timestamp(),
         }
     }
@@ -360,10 +369,10 @@ macro_rules! slug_key {
     };
 }
 
+slug_key!(ClassKey, 255, '-' | '_');
 slug_key!(EntryKey, 255, '-' | '_');
 slug_key!(FileKey, 255, '-' | '_' | '.');
 slug_key!(UserKey, 32, '-' | '_');
-slug_key!(TagKey, 32, '-' | '_');
 
 /// validated slug: non-empty, single URL path segment, tagged with its rule
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize)]
@@ -484,12 +493,12 @@ impl_stored!(EntryMeta);
 impl_stored!(Markdown);
 impl_stored!(EntryBody);
 impl_stored!(User);
+impl_stored!(Slug<ClassKey>);
 impl_stored!(Slug<EntryKey>);
 impl_stored!(Slug<FileKey>);
 impl_stored!(Slug<UserKey>);
-impl_stored!(Slug<TagKey>);
 
+impl_key!(Slug<ClassKey>);
 impl_key!(Slug<EntryKey>);
 impl_key!(Slug<FileKey>);
 impl_key!(Slug<UserKey>);
-impl_key!(Slug<TagKey>);

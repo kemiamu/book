@@ -4,6 +4,7 @@
 {% block title %}Authorization - {{ site_title }}{% endblock title %}
 {% block head %}
 <script defer>
+const BASE = "{{ base_path }}";
 function authApp() {
   return {
     page: "landing",
@@ -36,7 +37,7 @@ function authApp() {
       }
       this.loading = true;
       try {
-        const endpoint = this.page === "sign-in" ? "/auth/sign-in" : "/auth/sign-up";
+        const endpoint = this.page === "sign-in" ? BASE + "/auth/sign-in" : BASE + "/auth/sign-up";
         const body = {
           passkey: this.passkey,
           username: this.username,
@@ -47,7 +48,7 @@ function authApp() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         });
-        if (r.ok) window.location.href = "/";
+        if (r.ok) window.location.href = BASE + "/";
         else {
           const d = await r.json();
           this.error = d.error || "Request failed";

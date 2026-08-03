@@ -4,9 +4,11 @@
 {% block title %}Upload File - {{ site_title }}{% endblock title %}
 {% block head %}
 <script defer>
+const BASE = "{{ base_path }}";
 function uploadApp() {
   return {
-    entrySlug: "{{ default_entry }}",
+    classSlug: "",
+    entrySlug: "",
     fileSlug: "",
     file: null,
     fileName: "",
@@ -15,9 +17,8 @@ function uploadApp() {
     _fileSlugEdited: false,
     init() {
       const el = this.$el;
-      if (el.dataset.entry) {
-        this.entrySlug = el.dataset.entry;
-      }
+      this.classSlug = el.dataset.class || "";
+      this.entrySlug = el.dataset.entry || "";
     },
     onFileSelect(e) {
       const f = e.target.files[0];
@@ -38,11 +39,14 @@ function uploadApp() {
       this.loading = true;
       try {
         const fd = new FormData();
+        fd.append("class_slug", this.classSlug);
         fd.append("entry_slug", this.entrySlug);
         fd.append("file_slug", this.fileSlug);
         fd.append("file", this.file);
-        const r = await fetch("/upload", { method: "POST", body: fd });
-        if (r.ok) window.location.href = "/" + encodeURIComponent(this.entrySlug) + "/README.md";
+        const r = await fetch(BASE + "/upload", { method: "POST", body: fd });
+        if (r.ok)
+          window.location.href =
+            BASE + "/" + encodeURIComponent(this.classSlug) + "/" + encodeURIComponent(this.entrySlug) + "/README.md";
         else {
           const d = await r.json();
           this.error = d.error || r.statusText;
@@ -61,7 +65,7 @@ function uploadApp() {
 <section class="section">
   <div class="container container-narrow">
     <h1 class="title">Upload File to Entry</h1>
-    <form x-data="uploadApp()" x-on:submit.prevent="submit" data-entry="{{ default_entry }}">
+    <form x-data="uploadApp()" x-on:submit.prevent="submit" data-class="{{ default_class }}" data-entry="{{ default_entry }}">
       {{ form::input(label="File Slug", id="file_slug", model="fileSlug", required=true, placeholder="image.png", extra_attr='x-on:input="markFileSlugEdited"') }}
       <div class="field">
         <label class="label">File</label>
@@ -79,9 +83,9 @@ function uploadApp() {
         </div>
       </div>
       {% if default_entry %}
-        {% set cancel_url = "/" ~ default_entry ~ "/README.md" %}
+        {% set cancel_url = base_path ~ "/" ~ default_class ~ "/" ~ default_entry ~ "/README.md" %}
       {% else %}
-        {% set cancel_url = "/" %}
+        {% set cancel_url = base_path ~ "/" %}
       {% endif %}
       {{ form::button_group(submit_text="Upload", loading_text="Uploading...", cancel_url=cancel_url) }}
       {{ notify::error_notification() }}

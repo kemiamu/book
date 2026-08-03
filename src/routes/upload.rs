@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 #[derive(Deserialize)]
 pub struct UploadQuery {
+    pub class: Option<String>,
     pub entry: Option<String>,
 }
 
@@ -22,7 +23,7 @@ pub async fn file_upload_page(
     Query(params): Query<UploadQuery>,
 ) -> Result<Response, AppError> {
     // uploads are always bound to an entry, so a bare /upload has no target
-    let Some(entry) = params.entry else {
+    let (Some(class), Some(entry)) = (params.class, params.entry) else {
         return Ok(Redirect::to("/").into_response());
     };
 
@@ -33,6 +34,7 @@ pub async fn file_upload_page(
     let page = PageContext::new()
         .insert("page_title", "Upload File")
         .insert("user", &user)
+        .insert("default_class", &class)
         .insert("default_entry", &entry);
     Ok(Html(page.render("upload.html")?).into_response())
 }
@@ -45,6 +47,7 @@ pub async fn file_upload_post(
 ) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
     let username = token?;
 
+    let mut class_slug = String::new();
     let mut entry_slug = String::new();
     let mut file_slug = String::new();
     let mut file_data: Option<Vec<u8>> = None;
@@ -56,6 +59,11 @@ pub async fn file_upload_post(
     {
         let name = field.name().unwrap_or("").to_string();
         match name.as_str() {
+            "class_slug" => {
+                class_slug = field.text().await.map_err(|e| {
+                    AppError::new(StatusCode::BAD_REQUEST, format!("invalid class slug: {e}"))
+                })?
+            }
             "entry_slug" => {
                 entry_slug = field.text().await.map_err(|e| {
                     AppError::new(StatusCode::BAD_REQUEST, format!("invalid entry slug: {e}"))
@@ -91,6 +99,12 @@ pub async fn file_upload_post(
         }
     }
 
+    if class_slug.is_empty() {
+        return Err(AppError::new(
+            StatusCode::BAD_REQUEST,
+            "Class slug must not be empty",
+        ));
+    }
     if entry_slug.is_empty() {
         return Err(AppError::new(
             StatusCode::BAD_REQUEST,
@@ -107,6 +121,8 @@ pub async fn file_upload_post(
         return Err(AppError::new(StatusCode::BAD_REQUEST, "No file uploaded"));
     };
 
+    let class_slug =
+        Slug::new(class_slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
     let entry_slug =
         Slug::new(entry_slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
     let file_slug = Slug::new(file_slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
@@ -114,7 +130,7 @@ pub async fn file_upload_post(
     let tx = state.db.begin_write()?;
 
     let mut files_table = tx.open_table(FILES)?;
-    let key = (entry_slug, file_slug);
+    let key = (class_slug, entry_slug, file_slug);
     let meta = FileMeta::new(username);
     files_table.insert(&key, meta)?;
     drop(files_table);

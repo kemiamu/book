@@ -4,7 +4,7 @@
 {% block body %}
 <section class="section">
   <div class="container container-narrow">
-    {{ nav::page_header(title=page_title, current=slug, breadcrumb_text=page_date ~ " @" ~ page_editor, slug=slug, user=user) }}
+    {{ nav::page_header(title=page_title, current=slug, breadcrumb_text=page_date ~ " @" ~ page_editor, class=class, slug=slug, user=user) }}
     <hr />
     <div class="content">{{ content | safe }}</div>
   </div>

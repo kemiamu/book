@@ -1,12 +1,11 @@
 use crate::crypto::{Signable, Signed};
-use crate::model::{EntryKey, FileKey, Slug, TagKey, UserKey};
-use std::collections::HashSet;
+use crate::model::{ClassKey, EntryKey, FileKey, Slug, UserKey};
 
 fn user(name: &str) -> Slug<UserKey> {
     Slug::new(name.to_string()).unwrap()
 }
 
-fn tag(name: &str) -> Slug<TagKey> {
+fn class(name: &str) -> Slug<ClassKey> {
     Slug::new(name.to_string()).unwrap()
 }
 
@@ -28,10 +27,10 @@ fn slug_validation() {
 #[test]
 fn slug_rules_differ() {
     // dots are only allowed for files (filenames)
+    assert!(Slug::<ClassKey>::new("a.b").is_err());
     assert!(Slug::<EntryKey>::new("a.b").is_err());
     assert!(Slug::<FileKey>::new("a.b").is_ok());
     assert!(Slug::<UserKey>::new("a.b").is_err());
-    assert!(Slug::<TagKey>::new("a.b").is_err());
 
     // length limits
     assert!(Slug::<UserKey>::new("a".repeat(32)).is_ok());
@@ -55,15 +54,23 @@ fn slug_split() {
 
 #[test]
 fn entry_meta_basics() {
-    let mut tags = HashSet::new();
-    tags.insert(tag("rust"));
-
-    let meta = crate::model::EntryMeta::new("Hello", user("alice"), tags);
+    let meta = crate::model::EntryMeta::new("Hello", user("alice"));
 
     assert_eq!(meta.title, "Hello");
     assert_eq!(meta.editor.as_ref(), "alice");
-    assert!(meta.tags.contains(&tag("rust")));
+    assert!(meta.created_at > 0);
     assert!(meta.last_modified > 0);
+}
+
+#[test]
+fn entry_meta_update_keeps_created_at() {
+    let meta = crate::model::EntryMeta::new("Hello", user("alice"));
+    let updated = meta.update("World", user("bob"));
+
+    assert_eq!(updated.title, "World");
+    assert_eq!(updated.editor.as_ref(), "bob");
+    assert_eq!(updated.created_at, meta.created_at);
+    assert!(updated.last_modified >= meta.last_modified);
 }
 
 #[test]
@@ -139,4 +146,29 @@ fn signed_tampered_token_fails() {
 
     let parsed = Signed::<crate::model::Passkey>::parse(&tampered, secret);
     assert!(parsed.is_none());
+}
+
+#[test]
+fn class_slug_is_valid() {
+    assert!(class("notes").as_ref() == "notes");
+    assert!(Slug::<ClassKey>::new("a.b").is_err());
+}
+
+fn cfg(base_url: &str) -> crate::config::Config {
+    crate::config::Config {
+        server_addr: String::new(),
+        site_root: String::new(),
+        base_url: base_url.into(),
+        site_title: String::new(),
+        secret: String::new(),
+    }
+}
+
+#[test]
+fn config_base_path() {
+    assert_eq!(cfg("https://kemya.net/book").base_path(), "/book");
+    assert_eq!(cfg("https://kemya.net/book/").base_path(), "/book/");
+    assert_eq!(cfg("http://localhost:3000").base_path(), "");
+    assert_eq!(cfg("https://kemya.net").base_path(), "");
+    assert_eq!(cfg("https://kemya.net:8080/book").base_path(), "/book");
 }

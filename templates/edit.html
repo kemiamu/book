@@ -4,23 +4,24 @@
 {% block title %}Edit - {{ site_title }}{% endblock title %}
 {% block head %}
 <script defer>
+const BASE = "{{ base_path }}";
 function editApp() {
   return {
+    class: "",
     slug: "",
     title: "",
-    tags: "",
     body: "",
     error: "",
     loading: false,
     preview: false,
     init() {
       const el = this.$el;
+      this.class = el.dataset.class || "";
       this.slug = el.dataset.slug || "";
       this.title = el.dataset.title || "";
-      this.tags = el.dataset.tags || "";
       this.body = el.dataset.body || "";
       this.error = el.dataset.error || "";
-      this.isNew = !el.dataset.slug;
+      this.isNew = !el.dataset.class && !el.dataset.slug;
     },
     togglePreview() {
       this.preview = !this.preview;
@@ -29,20 +30,20 @@ function editApp() {
       this.error = "";
       this.loading = true;
       try {
-        const r = await fetch("/edit", {
+        const r = await fetch(BASE + "/edit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            class: this.class,
             slug: this.slug,
             title: this.title,
-            tags: this.tags,
             body: this.body,
           }),
         });
         if (r.ok) {
           const dest = this.isNew
-            ? "/edit?entry=" + encodeURIComponent(this.slug)
-            : "/" + encodeURIComponent(this.slug) + "/README.md";
+            ? BASE + "/edit?class=" + encodeURIComponent(this.class) + "&entry=" + encodeURIComponent(this.slug)
+            : BASE + "/" + encodeURIComponent(this.class) + "/" + encodeURIComponent(this.slug) + "/README.md";
           window.location.href = dest;
         } else {
           const t = await r.text();
@@ -66,13 +67,26 @@ function editApp() {
     <form
       x-data="editApp()"
       x-on:submit.prevent="submit"
+      data-class="{{ class }}"
       data-slug="{{ slug }}"
       data-title="{{ title }}"
-      data-tags="{{ tags }}"
       data-body="{{ body }}"
       data-error="{{ error }}"
     >
       {% if slug | length == 0 %}
+      <div class="field">
+        <label class="label" for="class">Class (category)</label>
+        <div class="control">
+          <input
+            class="input"
+            type="text"
+            id="class"
+            x-model="class"
+            required
+            placeholder="my-class"
+          />
+        </div>
+      </div>
       <div class="field">
         <label class="label" for="slug">Slug (URL name)</label>
         <div class="control">
@@ -88,13 +102,12 @@ function editApp() {
       </div>
       {% else %}
       {{ form::input(label="Title", id="title", model="title", required=true, placeholder="Page title") }}
-      {{ form::input(label="Tags (comma separated)", id="tags", model="tags", required=false, placeholder="tag1, tag2") }}
       {{ form::textarea(label="Body (Markdown)", id="body", model="body", placeholder="Write content in Markdown...") }}
       {% endif %}
       {% if slug | length > 0 %}
-        {% set cancel_url = "/" ~ slug ~ "/README.md" %}
+        {% set cancel_url = base_path ~ "/" ~ class ~ "/" ~ slug ~ "/README.md" %}
       {% else %}
-        {% set cancel_url = "/" %}
+        {% set cancel_url = base_path ~ "/" %}
       {% endif %}
       {% if slug | length > 0 %}
       {{ form::button_group(submit_text="Save", loading_text="Saving...", cancel_url=cancel_url) }}

@@ -109,6 +109,16 @@ pub mod config {
         pub fn init<P: AsRef<Path>>(file: P) -> Result<Self, Box<dyn Error>> {
             Ok(toml::from_str(&std::fs::read_to_string(file)?)?)
         }
+
+        /// the path prefix of base_url, e.g. "/book" for "https://kemya.net/book"
+        pub fn base_path(&self) -> &str {
+            let rest = self
+                .base_url
+                .split_once("://")
+                .map(|(_, rest)| rest)
+                .unwrap_or(&self.base_url);
+            rest.find('/').map(|i| &rest[i..]).unwrap_or("")
+        }
     }
 }
 

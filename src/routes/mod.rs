@@ -7,9 +7,11 @@ use book::CONFIG;
 use book::crypto::Signed;
 use book::error::AppError;
 use book::model::{AppState, ENTRIES, ENTRY_BODY, EntryMeta, FILES};
-use book::model::{EntryKey, FILE_BLOB, FileKey, PageContext, Passkey, Session, Slug, UserToken};
+use book::model::{
+    ClassKey, EntryKey, FILE_BLOB, FileKey, PageContext, Passkey, Session, Slug, UserToken,
+};
 use redb::{ReadableDatabase, ReadableTable};
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::sync::Arc;
 use time::OffsetDateTime;
 use time::format_description::well_known::Iso8601;
@@ -30,21 +32,22 @@ pub use upload::*;
 pub async fn entry_delete(
     UserToken(token): UserToken,
     State(state): State<Arc<AppState>>,
-    Path(slug): Path<String>,
+    Path((class, entry)): Path<(String, String)>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let _username = token?;
-    let slug = Slug::new(slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let class = Slug::new(class).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let entry = Slug::new(entry).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
     let tx = state.db.begin_write()?;
 
     // collect all file keys for this entry
-    let files_to_remove: Vec<(Slug<EntryKey>, Slug<FileKey>)> = {
+    let files_to_remove: Vec<(Slug<ClassKey>, Slug<EntryKey>, Slug<FileKey>)> = {
         let files_table = tx.open_table(FILES)?;
         let mut keys = Vec::new();
         for result in files_table.iter()? {
             let (key, _) = result?;
-            let (entry, file) = key.value();
-            if entry == slug {
-                keys.push((entry, file));
+            let (file_class, file_entry, file_name) = key.value();
+            if file_class == class && file_entry == entry {
+                keys.push((file_class, file_entry, file_name));
             }
         }
         keys
@@ -67,18 +70,21 @@ pub async fn entry_delete(
     }
 
     // remove entry data from all tables
+    let entry_key = (class, entry);
     {
         let mut entries_table = tx.open_table(ENTRIES)?;
-        entries_table.remove(&slug)?;
+        entries_table.remove(&entry_key)?;
     }
     {
         let mut body_table = tx.open_table(ENTRY_BODY)?;
-        body_table.remove(&slug)?;
+        body_table.remove(&entry_key)?;
     }
 
     tx.commit()?;
 
-    Ok(Json(serde_json::json!({"redirect": "/"})))
+    Ok(Json(
+        serde_json::json!({"redirect": format!("{}/", CONFIG.base_path())}),
+    ))
 }
 
 // util
@@ -102,7 +108,7 @@ fn err<M: ToString>(status: StatusCode, msg: M) -> (StatusCode, Json<serde_json:
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
-/// show home page with entries
+/// show home page with entries and classes
 pub async fn home_page(
     jar: CookieJar,
     State(state): State<Arc<AppState>>,
@@ -110,36 +116,35 @@ pub async fn home_page(
     let tx = state.db.begin_read()?;
 
     let entries_table = tx.open_table(ENTRIES)?;
-    let mut entries: Vec<(String, EntryMeta)> = Vec::new();
-    let mut tag_set: HashSet<String> = HashSet::new();
+    let mut entries: Vec<(Slug<ClassKey>, Slug<EntryKey>, EntryMeta)> = Vec::new();
+    let mut classes: BTreeSet<Slug<ClassKey>> = BTreeSet::new();
     for result in entries_table.iter()? {
         let (key, value) = result?;
-        let meta = value.value();
-        for tag in &meta.tags {
-            tag_set.insert(tag.to_string());
-        }
-        entries.push((key.value().to_string(), meta));
+        let (class, entry) = key.value();
+        entries.push((class.clone(), entry, value.value()));
+        classes.insert(class);
     }
 
     // most recently updated first
-    entries.sort_by(|a, b| b.1.last_modified.cmp(&a.1.last_modified));
+    entries.sort_by(|a, b| b.2.last_modified.cmp(&a.2.last_modified));
 
-    let mapped = entries.into_iter().map(|(name, meta)| {
-        serde_json::json!({
-            "href": format!("/{name}/README.md"),
-            "title": meta.title,
-        })
-    });
-    let entries: Vec<serde_json::Value> = mapped.collect();
-
-    let mut tags: Vec<String> = tag_set.into_iter().collect();
-    tags.sort();
-    let tags: Vec<serde_json::Value> = tags
+    let base = CONFIG.base_path();
+    let entries: Vec<serde_json::Value> = entries
         .into_iter()
-        .map(|tag| {
+        .map(|(class, entry, meta)| {
             serde_json::json!({
-                "href": format!("/tags/{tag}/README.md"),
-                "title": tag,
+                "href": format!("{base}/{class}/{entry}/README.md"),
+                "title": meta.title,
+            })
+        })
+        .collect();
+
+    let classes: Vec<serde_json::Value> = classes
+        .into_iter()
+        .map(|class| {
+            serde_json::json!({
+                "href": format!("{base}/{class}/README.md"),
+                "title": class.to_string(),
             })
         })
         .collect();
@@ -151,45 +156,48 @@ pub async fn home_page(
 
     let page = PageContext::new()
         .insert("page_title", "Home")
+        .insert("classes", &classes)
         .insert("entries", &entries)
-        .insert("tags", &tags)
         .insert("user", &user);
     Ok(Html(page.render("home.html")?))
 }
 
-// tags
+// classes
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
-/// show entries filtered by a tag
-pub async fn tags_page(
+/// show entries filtered by a class
+pub async fn class_page(
     jar: CookieJar,
     State(state): State<Arc<AppState>>,
-    Path(tag): Path<String>,
+    Path(class): Path<String>,
 ) -> Result<Html<String>, AppError> {
-    let tag = Slug::new(tag).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let class = Slug::new(class).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
     let tx = state.db.begin_read()?;
 
     let entries_table = tx.open_table(ENTRIES)?;
-    let mut entries: Vec<(String, EntryMeta)> = Vec::new();
+    let mut entries: Vec<(Slug<ClassKey>, Slug<EntryKey>, EntryMeta)> = Vec::new();
     for result in entries_table.iter()? {
         let (key, value) = result?;
-        let meta = value.value();
-        if meta.tags.contains(&tag) {
-            entries.push((key.value().to_string(), meta));
+        let (entry_class, entry) = key.value();
+        if entry_class == class {
+            entries.push((entry_class, entry, value.value()));
         }
     }
 
     // most recently updated first
-    entries.sort_by(|a, b| b.1.last_modified.cmp(&a.1.last_modified));
+    entries.sort_by(|a, b| b.2.last_modified.cmp(&a.2.last_modified));
 
-    let mapped = entries.into_iter().map(|(name, meta)| {
-        serde_json::json!({
-            "href": format!("/{name}/README.md"),
-            "title": meta.title,
+    let base = CONFIG.base_path();
+    let entries: Vec<serde_json::Value> = entries
+        .into_iter()
+        .map(|(class, entry, meta)| {
+            serde_json::json!({
+                "href": format!("{base}/{class}/{entry}/README.md"),
+                "title": meta.title,
+            })
         })
-    });
-    let entries: Vec<serde_json::Value> = mapped.collect();
+        .collect();
 
     let user = jar
         .get("session")
@@ -197,11 +205,11 @@ pub async fn tags_page(
         .map(|session| session.inner.user);
 
     let page = PageContext::new()
-        .insert("page_title", &tag)
-        .insert("tag", &tag)
+        .insert("page_title", &class)
+        .insert("class", &class)
         .insert("entries", &entries)
         .insert("user", &user);
-    Ok(Html(page.render("tags.html")?))
+    Ok(Html(page.render("class.html")?))
 }
 
 // view
@@ -212,24 +220,26 @@ pub async fn tags_page(
 pub async fn entry_page(
     jar: CookieJar,
     State(state): State<Arc<AppState>>,
-    Path(slug): Path<String>,
+    Path((class, slug)): Path<(String, String)>,
 ) -> Result<Html<String>, AppError> {
+    let class = Slug::new(class).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
     let slug = Slug::new(slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let key = (class, slug);
     let tx = state.db.begin_read()?;
 
     let entries_table = tx.open_table(ENTRIES)?;
-    let Some(row) = entries_table.get(&slug)? else {
+    let Some(row) = entries_table.get(&key)? else {
         return Err(AppError::new(
             StatusCode::NOT_FOUND,
-            format!("entry not found: {slug}"),
+            format!("entry not found: {}/{}", key.0, key.1),
         ));
     };
 
     let body_table = tx.open_table(ENTRY_BODY)?;
-    let Some(body) = body_table.get(&slug)? else {
+    let Some(body) = body_table.get(&key)? else {
         return Err(AppError::new(
             StatusCode::NOT_FOUND,
-            format!("entry body not found: {slug}"),
+            format!("entry body not found: {}/{}", key.0, key.1),
         ));
     };
 
@@ -248,10 +258,12 @@ pub async fn entry_page(
         .insert("page_title", &entry_meta.title)
         .insert("content", &body.value().html)
         .insert("user", &user)
-        .insert("slug", &slug)
+        .insert("class", &key.0)
+        .insert("slug", &key.1)
+        .insert("page_class", &key.0)
+        .insert("page_slug", &key.1)
         .insert("page_date", &date)
-        .insert("page_editor", &entry_meta.editor)
-        .insert("page_slug", &slug);
+        .insert("page_editor", &entry_meta.editor);
     Ok(Html(page.render("entry.html")?))
 }
 
@@ -293,22 +305,22 @@ pub async fn profile_page(
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
-/// download a file by entry and file slug
+/// download a file by class, entry and file slug
 pub async fn file_download(
     State(state): State<Arc<AppState>>,
-    Path((entry_slug, file_slug)): Path<(String, String)>,
+    Path((class, entry, file)): Path<(String, String, String)>,
 ) -> Result<(StatusCode, impl IntoResponse), AppError> {
-    let entry_slug =
-        Slug::new(entry_slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
-    let file_slug = Slug::new(file_slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
-    let key = (entry_slug, file_slug);
+    let class = Slug::new(class).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let entry = Slug::new(entry).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let file = Slug::new(file).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let key = (class, entry, file);
     let tx = state.db.begin_read()?;
 
     let files_table = tx.open_table(FILES)?;
     let Some(_meta) = files_table.get(&key)? else {
         return Err(AppError::new(
             StatusCode::NOT_FOUND,
-            format!("file not found: {}/{}", key.0, key.1),
+            format!("file not found: {}/{}/{}", key.0, key.1, key.2),
         ));
     };
     drop(files_table);
@@ -317,22 +329,33 @@ pub async fn file_download(
     let Some(blob) = blobs_table.get(&key)? else {
         return Err(AppError::new(
             StatusCode::NOT_FOUND,
-            format!("file blob not found: {}/{}", key.0, key.1),
+            format!("file blob not found: {}/{}/{}", key.0, key.1, key.2),
         ));
     };
     let data = blob.value();
     drop(blobs_table);
 
     let content_type =
-        mime_guess::from_path(key.1.as_ref()).first_or(mime_guess::mime::APPLICATION_OCTET_STREAM);
+        mime_guess::from_path(key.2.as_ref()).first_or(mime_guess::mime::APPLICATION_OCTET_STREAM);
 
     let headers = [
         ("Content-Type", content_type.to_string()),
         (
             "Content-Disposition",
-            format!("inline; filename=\"{}\"", key.1),
+            format!("inline; filename=\"{}\"", key.2),
         ),
     ];
 
     Ok((StatusCode::OK, (headers, data)))
+}
+
+// robots
+//
+// ++++++++++++============++++++++++++============++++++++++++============
+
+/// serve robots.txt honoring the base path, so only the home page is crawlable
+pub async fn robots_txt() -> impl IntoResponse {
+    let base = CONFIG.base_path();
+    let body = format!("User-agent: *\nAllow: {base}/$\nDisallow: /\n");
+    ([(axum::http::header::CONTENT_TYPE, "text/plain")], body)
 }

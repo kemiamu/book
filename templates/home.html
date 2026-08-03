@@ -10,8 +10,8 @@
     </p>
   </div>
 </section>
-{% if tags | length > 0 %}
-{{ listing::listing(title="Tags", items=tags) }}
+{% if classes | length > 0 %}
+{{ listing::listing(title="Classes", items=classes) }}
 {% endif %}
 {{ listing::listing(title="Entries", items=entries) }}
 {% endblock body %}
