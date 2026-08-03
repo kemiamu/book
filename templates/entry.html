@@ -4,8 +4,7 @@
 {% block body %}
 <section class="section">
   <div class="container container-narrow">
-    {{ nav::page_header(title=page_title, category=category, entry=entry, user=user) }}
-    {{ nav::breadcrumb(items=breadcrumbs) }}
+    {{ nav::page_header(title=page_title, breadcrumbs=breadcrumbs, actions=page_actions) }}
     <hr />
     <div class="content">{{ content | safe }}</div>
     {% if files | length > 0 %}

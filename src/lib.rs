@@ -85,8 +85,9 @@ pub mod crypto {
         /// generate a signed string
         pub fn generate<S: AsRef<[u8]>>(&self, secret: S) -> String {
             let data = self.inner.serialize();
+            let data_hex = hex::encode(&data);
             let sig = Mac::new(&data, secret, T::tag());
-            format!("{}.{}", hex::encode(&data), sig)
+            format!("{data_hex}.{sig}")
         }
     }
 }

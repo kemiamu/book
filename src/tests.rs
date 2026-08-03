@@ -154,7 +154,8 @@ fn signed_tampered_token_fails() {
     let (data_hex, sig_hex) = token.rsplit_once('.').unwrap();
     let mut sig_bytes = hex::decode(sig_hex).unwrap();
     sig_bytes[0] ^= 0x01;
-    let tampered = format!("{}.{}", data_hex, hex::encode(sig_bytes));
+    let sig_hex = hex::encode(sig_bytes);
+    let tampered = format!("{data_hex}.{sig_hex}");
 
     let parsed = Signed::<crate::model::Passkey>::parse(&tampered, secret);
     assert!(parsed.is_none());

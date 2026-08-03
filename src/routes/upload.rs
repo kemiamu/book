@@ -1,13 +1,10 @@
-use super::BreadcrumbItem;
-use super::path_slug;
+use super::{BreadcrumbItem, HeaderAction, path_slug};
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::{Json, extract::Multipart, extract::Path, extract::Query, extract::State};
 use axum_extra::extract::cookie::CookieJar;
-use book::model::{
-    AppState, CategoryKey, EntryKey, FILE_BLOB, FILES, FileKey, FileMeta, PageContext, Session,
-    Slug, UserToken,
-};
+use book::model::{AppState, CategoryKey, EntryKey, FILE_BLOB, FILES};
+use book::model::{FileKey, FileMeta, PageContext, Session, UserToken};
 use book::{CONFIG, crypto::Signed, error::AppError};
 use redb::ReadableDatabase;
 use serde::Deserialize;
@@ -163,13 +160,14 @@ pub async fn file_info_page(
     let entry = path_slug::<EntryKey>(&entry)?;
     let file = path_slug::<FileKey>(&file)?;
     let key = (category, entry, file);
+    let (category, entry, file) = &key;
     let tx = state.db.begin_read()?;
 
     let files_table = tx.open_table(FILES)?;
     let Some(meta) = files_table.get(&key)? else {
         return Err(AppError::new(
             StatusCode::NOT_FOUND,
-            format!("file not found: {}/{}/{}", key.0, key.1, key.2),
+            format!("file not found: {category}/{entry}/{file}"),
         ));
     };
     let file_meta = meta.value();
@@ -200,11 +198,11 @@ pub async fn file_info_page(
             "breadcrumbs",
             &[
                 BreadcrumbItem {
-                    href: Some(format!("{base}/{}/README.md", key.0)),
+                    href: Some(format!("{base}/{category}/README.md")),
                     label: key.0.to_string(),
                 },
                 BreadcrumbItem {
-                    href: Some(format!("{base}/{}/{}/README.md", key.0, key.1)),
+                    href: Some(format!("{base}/{category}/{entry}/README.md")),
                     label: key.1.to_string(),
                 },
                 BreadcrumbItem {
@@ -213,6 +211,7 @@ pub async fn file_info_page(
                 },
             ],
         )
+        .insert("page_actions", &Vec::<HeaderAction>::new())
         .insert("file_editor", &file_meta.editor)
         .insert("file_date", &date)
         .insert("file_size", &size)
@@ -231,6 +230,7 @@ pub async fn file_delete(
     let entry = path_slug::<EntryKey>(&entry)?;
     let file = path_slug::<FileKey>(&file)?;
     let key = (category, entry, file);
+    let (category, entry, _) = &key;
     let tx = state.db.begin_write()?;
 
     let mut files_table = tx.open_table(FILES)?;
@@ -245,6 +245,6 @@ pub async fn file_delete(
 
     let base = CONFIG.base_path();
     Ok(Json(
-        serde_json::json!({"redirect": format!("{base}/{}/{}/README.md", key.0, key.1)}),
+        serde_json::json!({"redirect": format!("{base}/{category}/{entry}/README.md")}),
     ))
 }

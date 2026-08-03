@@ -4,8 +4,7 @@
 {% block body %}
 <section class="section">
   <div class="container container-narrow">
-    <h1 class="title mb-0 pb-2">Category: {{ category }}</h1>
-    {{ nav::breadcrumb(items=breadcrumbs) }}
+    {{ nav::page_header(title=page_title, breadcrumbs=breadcrumbs, actions=page_actions) }}
     <hr />
     {% if entries | length > 0 %}
     <h2 class="list-title">Entries</h2>

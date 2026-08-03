@@ -1,7 +1,3 @@
-{% macro back_link() %}
-<a href="{{ base_path }}/" class="text-muted">Back to Home</a>
-{% endmacro back_link %}
-
 {% macro breadcrumb(items) %}
 <nav class="breadcrumb" aria-label="breadcrumbs">
   <ul>
@@ -15,15 +11,17 @@
 </nav>
 {% endmacro breadcrumb %}
 
-{% macro page_header(title, category, entry, user) %}
+{% macro page_header(title, breadcrumbs, actions) %}
 <div class="page-header">
-  <div>
+  <div class="page-header-main">
     <h1 class="title mb-0 pb-2">{{ title }}</h1>
+    {{ self::breadcrumb(items=breadcrumbs) }}
   </div>
-  {% if user %}
+  {% if actions %}
   <div class="page-header-actions">
-    <a href="{{ base_path }}/edit?category={{ category }}&entry={{ entry }}" class="btn">Edit</a>
-    <a href="{{ base_path }}/upload?category={{ category }}&entry={{ entry }}" class="btn">Upload</a>
+    {% for action in actions %}
+    <a class="btn" href="{{ action.href }}">{{ action.label }}</a>
+    {% endfor %}
   </div>
   {% endif %}
 </div>

@@ -2,7 +2,7 @@ use super::path_slug;
 use axum::{Json, extract::Query, extract::State, http::StatusCode, response::Html};
 use axum_extra::extract::cookie::CookieJar;
 use book::model::{AppState, CategoryKey, ENTRIES, ENTRY_BODY, EntryBody, EntryKey, EntryMeta};
-use book::model::{Markdown, PageContext, Session, Slug, UserToken};
+use book::model::{Markdown, PageContext, Session, UserToken};
 use book::{CONFIG, crypto::Signed, error::AppError};
 use redb::{ReadableDatabase, ReadableTable};
 use serde::Deserialize;
@@ -27,13 +27,14 @@ pub async fn edit_page(
             let category = path_slug::<CategoryKey>(category)?;
             let entry = path_slug::<EntryKey>(entry)?;
             let key = (category, entry);
+            let (category, entry) = &key;
             let tx = state.db.begin_read()?;
 
             let entries_table = tx.open_table(ENTRIES)?;
             let meta = entries_table.get(&key)?.ok_or_else(|| {
                 AppError::new(
                     StatusCode::NOT_FOUND,
-                    format!("entry not found: {}/{}", key.0, key.1),
+                    format!("entry not found: {category}/{entry}"),
                 )
             })?;
             let title = meta.value().title;
@@ -42,7 +43,7 @@ pub async fn edit_page(
             let body = bodies_table.get(&key)?.ok_or_else(|| {
                 AppError::new(
                     StatusCode::NOT_FOUND,
-                    format!("entry body not found: {}/{}", key.0, key.1),
+                    format!("entry body not found: {category}/{entry}"),
                 )
             })?;
 

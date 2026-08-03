@@ -104,6 +104,13 @@ struct BreadcrumbItem {
     label: String,
 }
 
+/// view model for an optional action button in the page header
+#[derive(serde::Serialize)]
+struct HeaderAction {
+    href: String,
+    label: String,
+}
+
 // home
 //
 // ++++++++++++============++++++++++++============++++++++++++============
@@ -199,7 +206,7 @@ pub async fn category_page(
         .map(|session| session.inner.user);
 
     let page = PageContext::new()
-        .insert("page_title", &category)
+        .insert("page_title", &format!("Category: {category}"))
         .insert("category", &category)
         .insert(
             "breadcrumbs",
@@ -208,6 +215,7 @@ pub async fn category_page(
                 label: category.to_string(),
             }],
         )
+        .insert("page_actions", &Vec::<HeaderAction>::new())
         .insert("entries", &entries)
         .insert("user", &user);
     Ok(Html(page.render("category.html")?))
@@ -226,13 +234,14 @@ pub async fn entry_page(
     let category = path_slug::<CategoryKey>(&category)?;
     let entry = path_slug::<EntryKey>(&entry)?;
     let key = (category, entry);
+    let (category, entry) = &key;
     let tx = state.db.begin_read()?;
 
     let entries_table = tx.open_table(ENTRIES)?;
     let Some(row) = entries_table.get(&key)? else {
         return Err(AppError::new(
             StatusCode::NOT_FOUND,
-            format!("entry not found: {}/{}", key.0, key.1),
+            format!("entry not found: {category}/{entry}"),
         ));
     };
 
@@ -240,7 +249,7 @@ pub async fn entry_page(
     let Some(body) = body_table.get(&key)? else {
         return Err(AppError::new(
             StatusCode::NOT_FOUND,
-            format!("entry body not found: {}/{}", key.0, key.1),
+            format!("entry body not found: {category}/{entry}"),
         ));
     };
 
@@ -250,6 +259,7 @@ pub async fn entry_page(
         .map(|session| session.inner.user);
 
     let entry_meta = row.value();
+    let editor = &entry_meta.editor;
     let date = OffsetDateTime::from_unix_timestamp(entry_meta.last_modified)
         .ok()
         .and_then(|date| date.format(&Iso8601::DATE).ok())
@@ -269,7 +279,7 @@ pub async fn entry_page(
     let files: Vec<ListItem> = files
         .into_iter()
         .map(|file| ListItem {
-            href: format!("{base}/{}/{}/{}/info", key.0, key.1, file),
+            href: format!("{base}/{category}/{entry}/{file}/info"),
             title: file.to_string(),
         })
         .collect();
@@ -284,12 +294,25 @@ pub async fn entry_page(
             "breadcrumbs",
             &[
                 BreadcrumbItem {
-                    href: Some(format!("{base}/{}/README.md", key.0)),
+                    href: Some(format!("{base}/{category}/README.md")),
                     label: key.0.to_string(),
                 },
                 BreadcrumbItem {
                     href: None,
-                    label: format!("{} @ {}", date, entry_meta.editor),
+                    label: format!("{date} @ {editor}"),
+                },
+            ],
+        )
+        .insert(
+            "page_actions",
+            &[
+                HeaderAction {
+                    href: format!("{base}/edit?category={category}&entry={entry}"),
+                    label: "Edit".into(),
+                },
+                HeaderAction {
+                    href: format!("{base}/upload?category={category}&entry={entry}"),
+                    label: "Upload".into(),
                 },
             ],
         )
@@ -323,7 +346,8 @@ pub async fn profile_page(
         .and_then(|date| date.format(&Iso8601::DATE).ok())
         .unwrap_or_default();
 
-    let passkey_url = format!("{}/auth?passkey={}", CONFIG.base_url, code);
+    let base_url = &CONFIG.base_url;
+    let passkey_url = format!("{base_url}/auth?passkey={code}");
 
     let page = PageContext::new()
         .insert("page_title", "Profile")
@@ -346,13 +370,14 @@ pub async fn file_download(
     let entry = path_slug::<EntryKey>(&entry)?;
     let file = path_slug::<FileKey>(&file)?;
     let key = (category, entry, file);
+    let (category, entry, file) = &key;
     let tx = state.db.begin_read()?;
 
     let files_table = tx.open_table(FILES)?;
     let Some(_meta) = files_table.get(&key)? else {
         return Err(AppError::new(
             StatusCode::NOT_FOUND,
-            format!("file not found: {}/{}/{}", key.0, key.1, key.2),
+            format!("file not found: {category}/{entry}/{file}"),
         ));
     };
     drop(files_table);
@@ -361,7 +386,7 @@ pub async fn file_download(
     let Some(blob) = blobs_table.get(&key)? else {
         return Err(AppError::new(
             StatusCode::NOT_FOUND,
-            format!("file blob not found: {}/{}/{}", key.0, key.1, key.2),
+            format!("file blob not found: {category}/{entry}/{file}"),
         ));
     };
     let data = blob.value();
@@ -374,7 +399,7 @@ pub async fn file_download(
         ("Content-Type", content_type.to_string()),
         (
             "Content-Disposition",
-            format!("inline; filename=\"{}\"", key.2),
+            format!("inline; filename=\"{file}\""),
         ),
     ];
 

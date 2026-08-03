@@ -4,8 +4,7 @@
 {% block body %}
 <section class="section">
   <div class="container container-narrow">
-    <h1 class="title mb-0 pb-2">{{ file }}</h1>
-    {{ nav::breadcrumb(items=breadcrumbs) }}
+    {{ nav::page_header(title=file, breadcrumbs=breadcrumbs, actions=page_actions) }}
     <hr />
     <div class="block">
       <p><span class="text-muted">Editor:</span> {{ file_editor }}</p>
