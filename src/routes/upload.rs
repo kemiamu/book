@@ -1,4 +1,5 @@
 use super::{BreadcrumbItem, HeaderAction, path_slug};
+use axum::extract::multipart::Field;
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::{Json, extract::Multipart, extract::Path, extract::Query, extract::State};
@@ -48,60 +49,20 @@ pub async fn file_upload_post(
 ) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
     let username = token?;
 
-    let mut category_slug = String::new();
-    let mut entry_slug = String::new();
-    let mut file_slug = String::new();
-    let mut file_data: Option<Vec<u8>> = None;
-
+    let mut form = UploadForm::default();
     while let Some(field) = multipart
         .next_field()
         .await
         .map_err(|e| AppError::new(StatusCode::BAD_REQUEST, format!("multipart error: {e}")))?
     {
-        let name = field.name().unwrap_or("").to_string();
-        match name.as_str() {
-            "category_slug" => {
-                category_slug = field.text().await.map_err(|e| {
-                    AppError::new(
-                        StatusCode::BAD_REQUEST,
-                        format!("invalid category slug: {e}"),
-                    )
-                })?
-            }
-            "entry_slug" => {
-                entry_slug = field.text().await.map_err(|e| {
-                    AppError::new(StatusCode::BAD_REQUEST, format!("invalid entry slug: {e}"))
-                })?
-            }
-            "file_slug" => {
-                file_slug = field.text().await.map_err(|e| {
-                    AppError::new(StatusCode::BAD_REQUEST, format!("invalid file slug: {e}"))
-                })?
-            }
-            "file" => {
-                if file_data.is_some() {
-                    return Err(AppError::new(
-                        StatusCode::BAD_REQUEST,
-                        "only one file allowed",
-                    ));
-                }
-                let data = field.bytes().await.map_err(|e| {
-                    AppError::new(StatusCode::BAD_REQUEST, format!("failed to read file: {e}"))
-                })?;
-                if data.is_empty() {
-                    return Err(AppError::new(StatusCode::BAD_REQUEST, "empty file"));
-                }
-                if data.len() > 100 * 1024 * 1024 {
-                    return Err(AppError::new(
-                        StatusCode::BAD_REQUEST,
-                        "file too large (max 100 MiB)",
-                    ));
-                }
-                file_data = Some(data.to_vec());
-            }
-            _ => {}
-        }
+        read_field(field, &mut form).await?;
     }
+    let UploadForm {
+        category_slug,
+        entry_slug,
+        file_slug,
+        file_data,
+    } = form;
 
     if category_slug.is_empty() {
         return Err(AppError::new(
@@ -189,28 +150,26 @@ pub async fn file_info_page(
         .map(|session| session.inner.user);
 
     let base = CONFIG.base_path();
+    let breadcrumbs = [
+        BreadcrumbItem {
+            href: Some(format!("{base}/{category}/README.md")),
+            label: key.0.to_string(),
+        },
+        BreadcrumbItem {
+            href: Some(format!("{base}/{category}/{entry}/README.md")),
+            label: key.1.to_string(),
+        },
+        BreadcrumbItem {
+            href: None,
+            label: key.2.to_string(),
+        },
+    ];
     let page = PageContext::new()
         .insert("page_title", &key.2)
         .insert("category", &key.0)
         .insert("entry", &key.1)
         .insert("file", &key.2)
-        .insert(
-            "breadcrumbs",
-            &[
-                BreadcrumbItem {
-                    href: Some(format!("{base}/{category}/README.md")),
-                    label: key.0.to_string(),
-                },
-                BreadcrumbItem {
-                    href: Some(format!("{base}/{category}/{entry}/README.md")),
-                    label: key.1.to_string(),
-                },
-                BreadcrumbItem {
-                    href: None,
-                    label: key.2.to_string(),
-                },
-            ],
-        )
+        .insert("breadcrumbs", &breadcrumbs)
         .insert("page_actions", &Vec::<HeaderAction>::new())
         .insert("file_editor", &file_meta.editor)
         .insert("file_date", &date)
@@ -244,7 +203,60 @@ pub async fn file_delete(
     tx.commit()?;
 
     let base = CONFIG.base_path();
-    Ok(Json(
-        serde_json::json!({"redirect": format!("{base}/{category}/{entry}/README.md")}),
-    ))
+    let redirect = serde_json::json!({"redirect": format!("{base}/{category}/{entry}/README.md")});
+    Ok(Json(redirect))
+}
+
+// upload form parsing
+//
+// ++++++++++++============++++++++++++============++++++++++++============
+
+/// multipart upload form being accumulated field by field
+#[derive(Default)]
+struct UploadForm {
+    category_slug: String,
+    entry_slug: String,
+    file_slug: String,
+    file_data: Option<Vec<u8>>,
+}
+
+/// dispatch one multipart field into the form being built
+async fn read_field(field: Field<'_>, form: &mut UploadForm) -> Result<(), AppError> {
+    const ONLY_ONE_FILE: &str = "only one file allowed";
+    let name = field.name().unwrap_or("").to_string();
+    match name.as_str() {
+        "category_slug" => form.category_slug = read_text(field, "category slug").await?,
+        "entry_slug" => form.entry_slug = read_text(field, "entry slug").await?,
+        "file_slug" => form.file_slug = read_text(field, "file slug").await?,
+        "file" if form.file_data.is_none() => form.file_data = Some(read_file(field).await?),
+        "file" => Err(AppError::new(StatusCode::BAD_REQUEST, ONLY_ONE_FILE))?,
+        _ => {}
+    }
+    Ok(())
+}
+
+/// read a text field, tagging errors with the field name
+async fn read_text(field: Field<'_>, what: &str) -> Result<String, AppError> {
+    field
+        .text()
+        .await
+        .map_err(|e| AppError::new(StatusCode::BAD_REQUEST, format!("invalid {what}: {e}")))
+}
+
+/// read the uploaded file, enforcing the size limits
+async fn read_file(field: Field<'_>) -> Result<Vec<u8>, AppError> {
+    let data = field
+        .bytes()
+        .await
+        .map_err(|e| AppError::new(StatusCode::BAD_REQUEST, format!("failed to read file: {e}")))?;
+    if data.is_empty() {
+        return Err(AppError::new(StatusCode::BAD_REQUEST, "empty file"));
+    }
+    if data.len() > 100 * 1024 * 1024 {
+        return Err(AppError::new(
+            StatusCode::BAD_REQUEST,
+            "file too large (max 100 MiB)",
+        ));
+    }
+    Ok(data.to_vec())
 }

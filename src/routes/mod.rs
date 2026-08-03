@@ -1,10 +1,9 @@
 use axum::response::{Html, IntoResponse};
 use axum::{Json, extract::Path, extract::State, http::StatusCode};
 use axum_extra::extract::cookie::CookieJar;
-use book::model::{
-    AppState, CategoryKey, ENTRIES, ENTRY_BODY, EntryKey, EntryMeta, FileKey, SlugRule,
-};
-use book::model::{FILE_BLOB, FILES, FilePath, PageContext, Passkey, Session, Slug, UserToken};
+use book::model::{AppState, CategoryKey, EntryKey, EntryMeta, FileKey, FilePath};
+use book::model::{ENTRIES, ENTRY_BODY, FILE_BLOB, FILES};
+use book::model::{PageContext, Passkey, Session, Slug, SlugRule, UserToken};
 use book::{CONFIG, crypto::Signed, error::AppError};
 use redb::{ReadableDatabase, ReadableTable};
 use std::{collections::BTreeSet, sync::Arc};
@@ -76,39 +75,8 @@ pub async fn entry_delete(
 
     tx.commit()?;
 
-    Ok(Json(
-        serde_json::json!({"redirect": format!("{}/", CONFIG.base_path())}),
-    ))
-}
-
-// util
-//
-// ++++++++++++============++++++++++++============++++++++++++============
-
-/// view model for a single listing row
-#[derive(serde::Serialize)]
-struct ListItem {
-    href: String,
-    title: String,
-}
-
-/// parse a path segment into a slug, normalizing disallowed characters
-fn path_slug<T: SlugRule>(raw: &str) -> Result<Slug<T>, AppError> {
-    Slug::normalize(raw).ok_or_else(|| AppError::new(StatusCode::BAD_REQUEST, "invalid slug"))
-}
-
-/// view model for a breadcrumb item; the current page has no href
-#[derive(serde::Serialize)]
-struct BreadcrumbItem {
-    href: Option<String>,
-    label: String,
-}
-
-/// view model for an optional action button in the page header
-#[derive(serde::Serialize)]
-struct HeaderAction {
-    href: String,
-    label: String,
+    let redirect = serde_json::json!({"redirect": format!("{}/", CONFIG.base_path())});
+    Ok(Json(redirect))
 }
 
 // home
@@ -205,16 +173,14 @@ pub async fn category_page(
         .and_then(|cookie| Signed::<Session>::parse(cookie.value(), &CONFIG.secret))
         .map(|session| session.inner.user);
 
+    let breadcrumbs = [BreadcrumbItem {
+        href: None,
+        label: category.to_string(),
+    }];
     let page = PageContext::new()
         .insert("page_title", &format!("Category: {category}"))
         .insert("category", &category)
-        .insert(
-            "breadcrumbs",
-            &[BreadcrumbItem {
-                href: None,
-                label: category.to_string(),
-            }],
-        )
+        .insert("breadcrumbs", &breadcrumbs)
         .insert("page_actions", &Vec::<HeaderAction>::new())
         .insert("entries", &entries)
         .insert("user", &user);
@@ -284,38 +250,34 @@ pub async fn entry_page(
         })
         .collect();
 
+    let breadcrumbs = [
+        BreadcrumbItem {
+            href: Some(format!("{base}/{category}/README.md")),
+            label: key.0.to_string(),
+        },
+        BreadcrumbItem {
+            href: None,
+            label: format!("{date} @ {editor}"),
+        },
+    ];
+    let page_actions = [
+        HeaderAction {
+            href: format!("{base}/edit?category={category}&entry={entry}"),
+            label: "Edit".into(),
+        },
+        HeaderAction {
+            href: format!("{base}/upload?category={category}&entry={entry}"),
+            label: "Upload".into(),
+        },
+    ];
     let page = PageContext::new()
         .insert("page_title", &entry_meta.title)
         .insert("content", &body.value().html)
         .insert("user", &user)
         .insert("category", &key.0)
         .insert("entry", &key.1)
-        .insert(
-            "breadcrumbs",
-            &[
-                BreadcrumbItem {
-                    href: Some(format!("{base}/{category}/README.md")),
-                    label: key.0.to_string(),
-                },
-                BreadcrumbItem {
-                    href: None,
-                    label: format!("{date} @ {editor}"),
-                },
-            ],
-        )
-        .insert(
-            "page_actions",
-            &[
-                HeaderAction {
-                    href: format!("{base}/edit?category={category}&entry={entry}"),
-                    label: "Edit".into(),
-                },
-                HeaderAction {
-                    href: format!("{base}/upload?category={category}&entry={entry}"),
-                    label: "Upload".into(),
-                },
-            ],
-        )
+        .insert("breadcrumbs", &breadcrumbs)
+        .insert("page_actions", &page_actions)
         .insert("page_date", &date)
         .insert("page_editor", &entry_meta.editor)
         .insert("files", &files);
@@ -415,4 +377,34 @@ pub async fn robots_txt() -> impl IntoResponse {
     let base = CONFIG.base_path();
     let body = format!("User-agent: *\nAllow: {base}/$\nDisallow: /\n");
     ([(axum::http::header::CONTENT_TYPE, "text/plain")], body)
+}
+
+// util
+//
+// ++++++++++++============++++++++++++============++++++++++++============
+
+/// view model for a single listing row
+#[derive(serde::Serialize)]
+struct ListItem {
+    href: String,
+    title: String,
+}
+
+/// parse a path segment into a slug, normalizing disallowed characters
+fn path_slug<T: SlugRule>(raw: &str) -> Result<Slug<T>, AppError> {
+    Slug::normalize(raw).ok_or_else(|| AppError::new(StatusCode::BAD_REQUEST, "invalid slug"))
+}
+
+/// view model for a breadcrumb item; the current page has no href
+#[derive(serde::Serialize)]
+struct BreadcrumbItem {
+    href: Option<String>,
+    label: String,
+}
+
+/// view model for an optional action button in the page header
+#[derive(serde::Serialize)]
+struct HeaderAction {
+    href: String,
+    label: String,
 }
