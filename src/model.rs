@@ -135,13 +135,13 @@ pub struct EntryBody {
 
 impl EntryBody {
     /// render a new body from markdown
-    pub fn new(md: Markdown) -> Self {
-        let html = md.render();
-        Self { raw: md, html }
+    pub fn new(raw: Markdown) -> Self {
+        let html = raw.render();
+        Self { raw, html }
     }
 }
 
-// user types
+// user / passkey
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
@@ -149,7 +149,7 @@ impl EntryBody {
 /// a registered user
 pub struct User {
     password: Mac,
-    pub parent: Username,
+    pub parent: Option<Username>,
 }
 
 impl User {
@@ -159,10 +159,9 @@ impl User {
     pub fn new(
         password: impl AsRef<[u8]>,
         secret: impl AsRef<[u8]>,
-        parent: impl Into<Username>,
+        parent: Option<Username>,
     ) -> Self {
         let password = Mac::new(password, secret, Self::PASSWD_TAG);
-        let parent = parent.into();
         Self { password, parent }
     }
 
@@ -173,27 +172,47 @@ impl User {
     }
 }
 
-// passkey
-//
-// ++++++++++++============++++++++++++============++++++++++++============
-
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// authorization passkey token
 pub struct Passkey {
-    pub creator: Username,
-    pub expires_at: i64,
+    creator: Option<Username>,
+    expires_at: i64,
 }
 
 impl Passkey {
     pub const EXPIRY_SECS: i64 = 7 * 24 * 60 * 60;
 
-    /// create a new passkey
+    /// create an invitation passkey for a known user
     pub fn new(creator: impl Into<Username>) -> Self {
         let now = time::UtcDateTime::now().unix_timestamp();
         Self {
-            creator: creator.into(),
+            creator: Some(creator.into()),
             expires_at: now + Self::EXPIRY_SECS,
         }
+    }
+
+    /// create a bootstrap passkey for first-time initialization
+    pub fn bootstrap() -> Self {
+        let now = time::UtcDateTime::now().unix_timestamp();
+        Self {
+            creator: None,
+            expires_at: now + Self::EXPIRY_SECS,
+        }
+    }
+
+    /// the inviting user, if this is an invitation passkey
+    pub fn creator(&self) -> Option<&Username> {
+        self.creator.as_ref()
+    }
+
+    /// consume the passkey, returning its creator
+    pub fn into_creator(self) -> Option<Username> {
+        self.creator
+    }
+
+    /// expiry timestamp
+    pub fn expires_at(&self) -> i64 {
+        self.expires_at
     }
 }
 

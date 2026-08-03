@@ -111,7 +111,7 @@ pub async fn sign_up_post(
         return Err(err(StatusCode::CONFLICT, "Username already exists"));
     }
 
-    let user = User::new(&body.password, &CONFIG.secret, passkey.inner.creator);
+    let user = User::new(&body.password, &CONFIG.secret, passkey.inner.into_creator());
     table.insert(&username, user).map_err(internal_error)?;
     drop(table);
     tx.commit().map_err(internal_error)?;

@@ -39,7 +39,7 @@ fn markdown_renders_html() {
 
 #[test]
 fn user_password_verify() {
-    let user = crate::model::User::new("mypass", "mysecret", Username::new("admin").unwrap());
+    let user = crate::model::User::new("mypass", "mysecret", Some(Username::new("admin").unwrap()));
     assert!(user.verify("mypass", "mysecret"));
     assert!(!user.verify("wrong", "mysecret"));
     assert!(!user.verify("mypass", "wrong"));
@@ -58,8 +58,8 @@ fn passkey_roundtrip() {
     let passkey = crate::model::Passkey::new(Username::new("alice").unwrap());
     let bytes = passkey.serialize();
     let restored = crate::model::Passkey::deserialize(&bytes).unwrap();
-    assert_eq!(restored.creator.as_ref(), "alice");
-    assert_eq!(restored.expires_at, passkey.expires_at);
+    assert_eq!(restored.creator().map(|u| u.as_ref()), Some("alice"));
+    assert_eq!(restored.expires_at(), passkey.expires_at());
 }
 
 #[test]
@@ -72,7 +72,10 @@ fn signed_generate_and_parse() {
 
     let parsed = Signed::<crate::model::Passkey>::parse(&token, secret);
     assert!(parsed.is_some());
-    assert_eq!(parsed.unwrap().inner.creator.as_ref(), "bob");
+    assert_eq!(
+        parsed.unwrap().inner.creator().map(|u| u.as_ref()),
+        Some("bob")
+    );
 }
 
 #[test]

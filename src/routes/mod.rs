@@ -204,7 +204,7 @@ pub async fn profile_page(
         .map(|session| session.inner.user);
 
     let passkey = Passkey::new(token?);
-    let expires_at = passkey.expires_at;
+    let expires_at = passkey.expires_at();
     let signed = Signed::new(passkey);
     let code = signed.generate(&CONFIG.secret);
 

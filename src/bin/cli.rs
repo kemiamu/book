@@ -70,7 +70,7 @@ impl InitUser {
         {
             let mut users = tx.open_table(USERS).unwrap();
             let username = Username::new(self.username.clone()).expect("invalid username");
-            let user = User::new(&self.password, &book::CONFIG.secret, username.clone());
+            let user = User::new(&self.password, &book::CONFIG.secret, Some(username.clone()));
             users.insert(username, user).unwrap();
         }
         tx.commit().unwrap();
@@ -101,7 +101,7 @@ impl GenPasskey {
 fn gen_passkey(creator: Username) {
     println!("Passkey for '{}':", creator);
     let passkey = Passkey::new(creator);
-    let expires_at = passkey.expires_at;
+    let expires_at = passkey.expires_at();
     let signed = Signed::new(passkey);
     let code = signed.generate(&book::CONFIG.secret);
 
