@@ -1,3 +1,4 @@
+{% import "macros/_nav.html" as nav %}
 <!doctype html>
 <html lang="en" x-data="theme()" :data-theme="dark ? 'dark' : 'light'">
   <head>
@@ -5,14 +6,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <title>{% block title %}{{ site_title }}{% endblock title %}</title>
+
     <meta name="description" content="A rather humble documentation site." />
     <link rel="icon" type="image/x-icon" href="{{ base_url }}/img/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ base_url }}/img/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ base_url }}/img/favicon-16x16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ base_url }}/img/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="{{ base_url }}/img/android-chrome-192x192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="{{ base_url }}/img/android-chrome-512x512.png">
+    <link rel="icon" type="image/png" sizes="192x192"
+          href="{{ base_url }}/img/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512"
+          href="{{ base_url }}/img/android-chrome-512x512.png">
     <link rel="manifest" href="{{ base_url }}/img/site.webmanifest">
+    <link rel="stylesheet" href="{{ base_url }}/css/modern-normalize.css" />
+    <link rel="stylesheet" href="{{ base_url }}/css/style-0018.css" />
+
     <script>
       // apply the theme before first paint so the page never flashes
       // the wrong palette while Alpine.js is still loading
@@ -21,24 +28,10 @@
         document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
       })();
     </script>
-    <link rel="stylesheet" href="{{ base_url }}/css/style-0018.css" />
+
     {% block head %}{% endblock head %}
     <script defer src="{{ base_url }}/js/alpine.min.js"></script>
-    <script>
-      function theme() {
-        const mq = window.matchMedia("(prefers-color-scheme: dark)");
-        return {
-          dark: mq.matches,
-          init() {
-            // keep in sync with the pre-paint script above
-            this.dark = mq.matches;
-            mq.addEventListener("change", (e) => {
-              this.dark = e.matches;
-            });
-          },
-        };
-      }
-    </script>
+    {% include "macros/_scripts.html" %}
   </head>
   <body>
     <main>{% block body %}{% endblock body %}</main>
@@ -57,7 +50,10 @@
               {% if user %}
               <li><a href="{{ base_path }}/edit" class="text-muted">New Entry</a></li>
               <li><a href="{{ base_path }}/profile" class="text-muted">Profile</a></li>
-              <li><a href="{{ base_path }}/auth/sign-out" :class="confirm ? 'text-danger' : 'text-muted'" x-data="{ confirm: false }" @click.prevent="if (confirm) { window.location.href = '{{ base_path }}/auth/sign-out' } else { confirm = true; setTimeout(() => confirm = false, 3000) }" x-text="confirm ? 'Confirm Sign Out?' : 'Sign Out'">Sign Out</a></li>
+              {{ nav::confirm_link(
+                label="Sign Out", href=base_path ~ "/auth/sign-out",
+                confirm_label="Confirm Sign Out?"
+              ) }}
               {% endif %}
               {% block footer_actions %}{% endblock footer_actions %}
             </ul>
@@ -71,29 +67,6 @@
           </p>
         </div>
       </div>
-      {% if user %}
-      <script>
-      const BASE = "{{ base_path }}";
-      function deleteEntry(categorySlug, entrySlug) {
-        fetch(BASE + '/' + encodeURIComponent(categorySlug) + '/' + encodeURIComponent(entrySlug) + '/delete', { method: 'POST' })
-          .then(r => r.json())
-          .then(data => {
-            if (data.redirect) {
-              window.location.href = data.redirect;
-            }
-          });
-      }
-      function deleteFile(categorySlug, entrySlug, fileSlug) {
-        fetch(BASE + '/' + encodeURIComponent(categorySlug) + '/' + encodeURIComponent(entrySlug) + '/' + encodeURIComponent(fileSlug) + '/delete', { method: 'POST' })
-          .then(r => r.json())
-          .then(data => {
-            if (data.redirect) {
-              window.location.href = data.redirect;
-            }
-          });
-      }
-      </script>
-      {% endif %}
     </footer>
   </body>
 </html>

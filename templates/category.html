@@ -12,7 +12,9 @@
       {% for item in entries %}
       {% if not loop.first %}<li class="list-sep" aria-hidden="true"></li>{% endif %}
       <li class="list-item">
-        <a class="list-link" href="{{ item.href }}"><span class="list-item-title">{{ item.title }}</span></a>
+        <a class="list-link" href="{{ item.href }}">
+          <span class="list-item-title">{{ item.title }}</span>
+        </a>
       </li>
       {% endfor %}
     </ol>

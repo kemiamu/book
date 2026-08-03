@@ -1,0 +1,32 @@
+<script>
+  function theme() {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    return {
+      dark: mq.matches,
+      init() {
+        // keep in sync with the pre-paint script above
+        this.dark = mq.matches;
+        mq.addEventListener("change", (e) => (this.dark = e.matches));
+      },
+    };
+  }
+
+  // confirm-then-act state for footer links (sign out, delete)
+  function confirmLink(label, confirmLabel, url) {
+    return {
+      label,
+      confirm: false,
+      click() {
+        if (this.confirm) return this.act();
+        this.confirm = true;
+        this.label = confirmLabel;
+        setTimeout(() => (this.confirm = false, this.label = label), 3000);
+      },
+      act() {
+        if (url) return fetch(url, { method: "POST" }).then((r) => r.json())
+          .then((d) => d.redirect && (window.location.href = d.redirect));
+        window.location.href = this.$el.href;
+      },
+    };
+  }
+</script>

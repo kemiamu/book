@@ -46,7 +46,8 @@ function uploadApp() {
         const r = await fetch(BASE + "/upload", { method: "POST", body: fd });
         if (r.ok)
           window.location.href =
-            BASE + "/" + encodeURIComponent(this.categorySlug) + "/" + encodeURIComponent(this.entrySlug) + "/README.md";
+            BASE + "/" + encodeURIComponent(this.categorySlug) + "/"
+              + encodeURIComponent(this.entrySlug) + "/README.md";
         else {
           const d = await r.json();
           this.error = d.error || r.statusText;
@@ -65,8 +66,17 @@ function uploadApp() {
 <section class="section">
   <div class="container container-narrow">
     <h1 class="title">Upload File to Entry</h1>
-    <form x-data="uploadApp()" x-on:submit.prevent="submit" data-category="{{ default_category }}" data-entry="{{ default_entry }}">
-      {{ form::input(label="File Slug", id="file_slug", model="fileSlug", required=true, placeholder="image.png", extra_attr='x-on:input="markFileSlugEdited"') }}
+    <form
+      x-data="uploadApp()"
+      x-on:submit.prevent="submit"
+      data-category="{{ default_category }}"
+      data-entry="{{ default_entry }}"
+    >
+      {{ form::input(
+        label="File Slug", id="file_slug", model="fileSlug",
+        required=true, placeholder="image.png",
+        extra_attr='x-on:input="markFileSlugEdited"'
+      ) }}
       <div class="field">
         <label class="label">File</label>
         <div class="file-upload">
@@ -83,11 +93,14 @@ function uploadApp() {
         </div>
       </div>
       {% if default_entry %}
-        {% set cancel_url = base_path ~ "/" ~ default_category ~ "/" ~ default_entry ~ "/README.md" %}
+        {% set cancel_url = base_path ~ "/" ~ default_category ~ "/"
+          ~ default_entry ~ "/README.md" %}
       {% else %}
         {% set cancel_url = base_path ~ "/" %}
       {% endif %}
-      {{ form::button_group(submit_text="Upload", loading_text="Uploading...", cancel_url=cancel_url) }}
+      {{ form::button_group(
+        submit_text="Upload", loading_text="Uploading...", cancel_url=cancel_url
+      ) }}
       {{ notify::error_notification() }}
     </form>
   </div>

@@ -75,7 +75,10 @@ function authApp() {
             </div>
             <div class="notice notice-info">
               <p class="text-bold">&#10003; Valid Passkey provided</p>
-              <p>This is an important credential. Keep it secure and do not share it with untrusted parties.</p>
+              <p>
+                This is an important credential. Keep it secure and do not
+                share it with untrusted parties.
+              </p>
             </div>
             <div class="block">
               <p class="text-center text-muted mb-4">Select an action below to proceed:</p>
@@ -97,10 +100,22 @@ function authApp() {
                 <form x-on:submit.prevent="submit">
                   <input type="hidden" name="passkey" :value="passkey" />
 
-                  {{ form::input(label="Username", id="username", model="username", required=true, placeholder="Your username", autocomplete="username") }}
-                  {{ form::input(label="Password", id="password", model="password", required=true, placeholder="Your password", type="password", autocomplete="current-password") }}
+                  {{ form::input(
+                    label="Username", id="username", model="username",
+                    required=true, placeholder="Your username",
+                    autocomplete="username"
+                  ) }}
+                  {{ form::input(
+                    label="Password", id="password", model="password",
+                    required=true, placeholder="Your password",
+                    type="password", autocomplete="current-password"
+                  ) }}
                   <template x-if="page === 'sign-up'">
-                    {{ form::input(label="Confirm Password", id="confirm", model="confirm", required=true, placeholder="Repeat password", type="password", autocomplete="new-password") }}
+                    {{ form::input(
+                      label="Confirm Password", id="confirm", model="confirm",
+                      required=true, placeholder="Repeat password",
+                      type="password", autocomplete="new-password"
+                    ) }}
                   </template>
                   {{ notify::error_notification() }}
                   <div class="field">

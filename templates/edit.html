@@ -42,8 +42,10 @@ function editApp() {
         });
         if (r.ok) {
           const dest = this.isNew
-            ? BASE + "/edit?category=" + encodeURIComponent(this.categorySlug) + "&entry=" + encodeURIComponent(this.entrySlug)
-            : BASE + "/" + encodeURIComponent(this.categorySlug) + "/" + encodeURIComponent(this.entrySlug) + "/README.md";
+            ? BASE + "/edit?category=" + encodeURIComponent(this.categorySlug)
+                + "&entry=" + encodeURIComponent(this.entrySlug)
+            : BASE + "/" + encodeURIComponent(this.categorySlug) + "/"
+                + encodeURIComponent(this.entrySlug) + "/README.md";
           window.location.href = dest;
         } else {
           const t = await r.text();
@@ -101,8 +103,14 @@ function editApp() {
         </div>
       </div>
       {% else %}
-      {{ form::input(label="Title", id="title", model="title", required=true, placeholder="Page title") }}
-      {{ form::textarea(label="Body (Markdown)", id="body", model="body", placeholder="Write content in Markdown...") }}
+      {{ form::input(
+        label="Title", id="title", model="title",
+        required=true, placeholder="Page title"
+      ) }}
+      {{ form::textarea(
+        label="Body (Markdown)", id="body", model="body",
+        placeholder="Write content in Markdown..."
+      ) }}
       {% endif %}
       {% if entry | length > 0 %}
         {% set cancel_url = base_path ~ "/" ~ category ~ "/" ~ entry ~ "/README.md" %}
@@ -112,7 +120,9 @@ function editApp() {
       {% if entry | length > 0 %}
       {{ form::button_group(submit_text="Save", loading_text="Saving...", cancel_url=cancel_url) }}
       {% else %}
-      {{ form::button_group(submit_text="Create", loading_text="Creating...", cancel_url=cancel_url) }}
+      {{ form::button_group(
+        submit_text="Create", loading_text="Creating...", cancel_url=cancel_url
+      ) }}
       {% endif %}
       {{ notify::error_notification() }}
     </form>

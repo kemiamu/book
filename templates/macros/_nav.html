@@ -4,7 +4,9 @@
     <li><a href="{{ base_path }}/">Home</a></li>
     {% for item in items %}
     <li {% if loop.last %}class="breadcrumb-active"{% endif %}>
-      {% if item.href %}<a href="{{ item.href }}">{{ item.label }}</a>{% else %}<span class="text-muted" aria-current="page">{{ item.label }}</span>{% endif %}
+      {% if item.href %}<a href="{{ item.href }}">{{ item.label }}</a>
+      {% else %}<span class="text-muted" aria-current="page">{{ item.label }}</span>
+      {% endif %}
     </li>
     {% endfor %}
   </ul>
@@ -26,3 +28,13 @@
   {% endif %}
 </div>
 {% endmacro page_header %}
+
+{% macro confirm_link(label, confirm_label, href="", url="") %}
+<li><a
+    href="{{ href }}" class="text-muted"
+    x-data="confirmLink('{{ label }}', '{{ confirm_label }}', '{{ url }}')"
+    :class="confirm ? 'text-danger' : 'text-muted'"
+    @click.prevent="click()"
+    x-text="label"
+  >{{ label }}</a></li>
+{% endmacro confirm_link %}

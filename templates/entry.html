@@ -14,7 +14,9 @@
       {% for file in files %}
       {% if not loop.first %}<li class="list-sep" aria-hidden="true"></li>{% endif %}
       <li class="list-item">
-        <a class="list-link" href="{{ file.href }}"><span class="list-item-title">{{ file.title }}</span></a>
+        <a class="list-link" href="{{ file.href }}">
+          <span class="list-item-title">{{ file.title }}</span>
+        </a>
       </li>
       {% endfor %}
     </ol>
@@ -23,5 +25,8 @@
 </section>
 {% endblock body %}
 {% block footer_actions %}
-<li><a href="#" :class="confirm ? 'text-danger' : 'text-muted'" x-data="{ confirm: false }" @click.prevent="if (confirm) { deleteEntry('{{ category }}', '{{ entry }}') } else { confirm = true; setTimeout(() => confirm = false, 3000) }" x-text="confirm ? 'Confirm Delete?' : 'Delete This Entry'">Delete This Entry</a></li>
+{{ nav::confirm_link(
+  label="Delete This Entry", confirm_label="Confirm Delete?",
+  url=base_path ~ "/" ~ category ~ "/" ~ entry ~ "/delete"
+) }}
 {% endblock footer_actions %}
