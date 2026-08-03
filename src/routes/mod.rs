@@ -85,10 +85,10 @@ pub async fn entry_delete(
 // ++++++++++++============++++++++++++============++++++++++++============
 
 /// create a 500 internal server error response
-fn internal_error(e: impl ToString) -> (StatusCode, Json<serde_json::Value>) {
+fn internal_error(error: impl ToString) -> (StatusCode, Json<serde_json::Value>) {
     (
         StatusCode::INTERNAL_SERVER_ERROR,
-        Json(serde_json::json!({"error": e.to_string()})),
+        Json(serde_json::json!({"error": error.to_string()})),
     )
 }
 
@@ -128,8 +128,8 @@ pub async fn home_page(
 
     let user = jar
         .get("session")
-        .and_then(|c| Signed::<Session>::parse(c.value(), &CONFIG.secret))
-        .map(|s| s.inner.user);
+        .and_then(|cookie| Signed::<Session>::parse(cookie.value(), &CONFIG.secret))
+        .map(|session| session.inner.user);
 
     let page = PageContext::new()
         .insert("page_title", "Home")
@@ -169,13 +169,13 @@ pub async fn entry_page(
 
     let user = jar
         .get("session")
-        .and_then(|c| Signed::<Session>::parse(c.value(), &CONFIG.secret))
-        .map(|s| s.inner.user);
+        .and_then(|cookie| Signed::<Session>::parse(cookie.value(), &CONFIG.secret))
+        .map(|session| session.inner.user);
 
     let entry_meta = row.value();
     let date = OffsetDateTime::from_unix_timestamp(entry_meta.last_modified)
         .ok()
-        .and_then(|d| d.format(&Iso8601::DATE).ok())
+        .and_then(|date| date.format(&Iso8601::DATE).ok())
         .unwrap_or_default();
 
     let page = PageContext::new()
@@ -200,8 +200,8 @@ pub async fn profile_page(
 ) -> Result<Html<String>, AppError> {
     let user = jar
         .get("session")
-        .and_then(|c| Signed::<Session>::parse(c.value(), &CONFIG.secret))
-        .map(|s| s.inner.user);
+        .and_then(|cookie| Signed::<Session>::parse(cookie.value(), &CONFIG.secret))
+        .map(|session| session.inner.user);
 
     let passkey = Passkey::new(token?);
     let expires_at = passkey.expires_at;
@@ -210,7 +210,7 @@ pub async fn profile_page(
 
     let expires_at = OffsetDateTime::from_unix_timestamp(expires_at)
         .ok()
-        .and_then(|d| d.format(&Iso8601::DATE).ok())
+        .and_then(|date| date.format(&Iso8601::DATE).ok())
         .unwrap_or_default();
 
     let passkey_url = format!("{}/auth?passkey={}", CONFIG.base_url, code);

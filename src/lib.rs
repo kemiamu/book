@@ -74,8 +74,8 @@ pub mod crypto {
         }
 
         /// parse a signed string
-        pub fn parse(s: impl AsRef<str>, secret: impl AsRef<[u8]>) -> Option<Self> {
-            let (hex, sig) = s.as_ref().rsplit_once('.')?;
+        pub fn parse(encoded: impl AsRef<str>, secret: impl AsRef<[u8]>) -> Option<Self> {
+            let (hex, sig) = encoded.as_ref().rsplit_once('.')?;
             let data = hex::decode(hex).ok()?;
             let inner = T::deserialize(&data)?;
             let expected = Mac::new(&data, secret, T::tag()).to_string();

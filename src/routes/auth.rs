@@ -129,7 +129,7 @@ pub async fn sign_out(jar: CookieJar, headers: HeaderMap) -> impl IntoResponse {
     let jar = jar.remove(Cookie::build(("session", "")).path("/").build());
     let dest = headers
         .get("Referer")
-        .and_then(|v| v.to_str().ok())
+        .and_then(|value| value.to_str().ok())
         .unwrap_or("/");
     (jar, Redirect::to(dest))
 }

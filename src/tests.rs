@@ -47,27 +47,27 @@ fn user_password_verify() {
 
 #[test]
 fn session_expiry() {
-    let s = crate::model::Session::new(Username::new("alice").unwrap());
-    assert_eq!(s.user.as_ref(), "alice");
-    assert!(s.expires_at > time::UtcDateTime::now().unix_timestamp());
-    assert!(s.is_valid());
+    let session = crate::model::Session::new(Username::new("alice").unwrap());
+    assert_eq!(session.user.as_ref(), "alice");
+    assert!(session.expires_at > time::UtcDateTime::now().unix_timestamp());
+    assert!(session.is_valid());
 }
 
 #[test]
 fn passkey_roundtrip() {
-    let pk = crate::model::Passkey::new(Username::new("alice").unwrap());
-    let bytes = pk.serialize();
+    let passkey = crate::model::Passkey::new(Username::new("alice").unwrap());
+    let bytes = passkey.serialize();
     let restored = crate::model::Passkey::deserialize(&bytes).unwrap();
     assert_eq!(restored.creator.as_ref(), "alice");
-    assert_eq!(restored.expires_at, pk.expires_at);
+    assert_eq!(restored.expires_at, passkey.expires_at);
 }
 
 #[test]
 fn signed_generate_and_parse() {
-    let pk = crate::model::Passkey::new(Username::new("bob").unwrap());
+    let passkey = crate::model::Passkey::new(Username::new("bob").unwrap());
     let secret = "test-secret";
 
-    let signed = Signed::new(pk);
+    let signed = Signed::new(passkey);
     let token = signed.generate(secret);
 
     let parsed = Signed::<crate::model::Passkey>::parse(&token, secret);
@@ -86,10 +86,10 @@ fn heading_attributes_parsed() {
 
 #[test]
 fn signed_tampered_token_fails() {
-    let pk = crate::model::Passkey::new(Username::new("bob").unwrap());
+    let passkey = crate::model::Passkey::new(Username::new("bob").unwrap());
     let secret = "test-secret";
 
-    let signed = Signed::new(pk);
+    let signed = Signed::new(passkey);
     let token = signed.generate(secret);
 
     let (data_hex, sig_hex) = token.rsplit_once('.').unwrap();

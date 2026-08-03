@@ -107,7 +107,7 @@ fn gen_passkey(creator: Username) {
 
     let expires_at = OffsetDateTime::from_unix_timestamp(expires_at)
         .ok()
-        .and_then(|d| d.format(&Iso8601::DATE).ok())
+        .and_then(|date| date.format(&Iso8601::DATE).ok())
         .unwrap_or_default();
 
     let url = format!("{}/auth?passkey={}", book::CONFIG.base_url, code);

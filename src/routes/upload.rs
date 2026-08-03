@@ -30,8 +30,8 @@ pub async fn file_upload_page(
 
     let user = jar
         .get("session")
-        .and_then(|c| Signed::<Session>::parse(c.value(), &CONFIG.secret))
-        .map(|s| s.inner.user);
+        .and_then(|cookie| Signed::<Session>::parse(cookie.value(), &CONFIG.secret))
+        .map(|session| session.inner.user);
     let page = PageContext::new()
         .insert("page_title", "Upload File")
         .insert("user", &user)

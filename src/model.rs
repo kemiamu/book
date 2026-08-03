@@ -304,13 +304,13 @@ pub struct Slug(Cow<'static, str>);
 
 impl Slug {
     /// check if a char is allowed in a slug
-    fn is_slug_char(c: char) -> bool {
-        c.is_ascii_alphanumeric() || c == '-' || c == '_'
+    fn is_slug_char(ch: char) -> bool {
+        ch.is_ascii_alphanumeric() || ch == '-' || ch == '_'
     }
 
     /// validate and create a new slug
-    pub fn new(s: impl Into<Cow<'static, str>>) -> Result<Self, &'static str> {
-        let cow = s.into();
+    pub fn new(value: impl Into<Cow<'static, str>>) -> Result<Self, &'static str> {
+        let cow = value.into();
         if cow.is_empty() {
             Err("slug must not be empty")
         } else if cow.len() > 255 {
@@ -356,8 +356,8 @@ impl serde::Serialize for Slug {
 impl<'de> serde::Deserialize<'de> for Slug {
     /// deserialize with validation
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let s = String::deserialize(d)?;
-        Slug::new(s).map_err(serde::de::Error::custom)
+        let raw = String::deserialize(d)?;
+        Slug::new(raw).map_err(serde::de::Error::custom)
     }
 }
 

@@ -60,8 +60,8 @@ pub async fn edit_page(
 
     let user = jar
         .get("session")
-        .and_then(|c| Signed::<Session>::parse(c.value(), &CONFIG.secret))
-        .map(|s| s.inner.user);
+        .and_then(|cookie| Signed::<Session>::parse(cookie.value(), &CONFIG.secret))
+        .map(|session| session.inner.user);
     let page = PageContext::new()
         .insert("page_title", "Edit")
         .insert("slug", &slug)
@@ -101,11 +101,11 @@ pub async fn edit_post(
     };
 
     let mut entries_table = tx.open_table(ENTRIES)?;
-    let existing = entries_table.get(&slug)?.map(|g| g.value());
+    let existing = entries_table.get(&slug)?.map(|guard| guard.value());
     let meta = EntryMeta::new(
         title,
         username,
-        existing.map(|m| m.tags).unwrap_or_default(),
+        existing.map(|meta| meta.tags).unwrap_or_default(),
     );
     entries_table.insert(&slug, meta)?;
     drop(entries_table);
