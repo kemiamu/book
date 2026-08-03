@@ -402,18 +402,11 @@ impl<T: SlugRule> Slug<T> {
     /// convert a raw name into a valid slug, replacing runs of
     /// disallowed characters with '-'
     pub fn normalize(input: &str) -> Option<Slug<T>> {
-        let mut out = String::with_capacity(input.len());
-        let mut pending_dash = false;
-        for ch in input.chars() {
-            if T::is_allowed(ch) {
-                if pending_dash && !out.is_empty() {
-                    out.push('-');
-                }
-                pending_dash = false;
-                out.push(ch);
-            } else {
-                pending_dash = true;
-            }
+        let mut parts = Self::split(input);
+        let mut out = parts.next()?.to_string();
+        for part in parts {
+            out.push('-');
+            out.push_str(&part);
         }
         Slug::new(out).ok()
     }
