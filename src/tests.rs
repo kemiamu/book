@@ -17,15 +17,26 @@ fn slug_validation() {
 }
 
 #[test]
+fn slug_split() {
+    let slugs: Vec<String> = Slug::split("Hello, World! foo_bar 123")
+        .map(|s| s.to_string())
+        .collect();
+    assert_eq!(slugs, ["Hello", "World", "foo_bar", "123"]);
+    assert_eq!(Slug::split("a-b_c.d/e f").count(), 3);
+    assert_eq!(Slug::split("   ").count(), 0);
+    assert_eq!(Slug::split("").count(), 0);
+}
+
+#[test]
 fn entry_meta_basics() {
     let mut tags = HashSet::new();
-    tags.insert("rust".to_string());
+    tags.insert(Slug::new("rust").unwrap());
 
     let meta = crate::model::EntryMeta::new("Hello", Username::new("alice").unwrap(), tags);
 
     assert_eq!(meta.title, "Hello");
     assert_eq!(meta.editor.as_ref(), "alice");
-    assert!(meta.tags.contains("rust"));
+    assert!(meta.tags.contains(&Slug::new("rust").unwrap()));
     assert!(meta.last_modified > 0);
 }
 

@@ -9,7 +9,7 @@ use book::error::AppError;
 use book::model::{AppState, EntryBody, EntryMeta, Markdown, PageContext, Slug};
 use book::model::{ENTRIES, ENTRY_BODY};
 use book::model::{Session, UserToken};
-use redb::{ReadableDatabase, ReadableTable};
+use redb::ReadableDatabase;
 use serde::Deserialize;
 
 use std::sync::Arc;
@@ -27,7 +27,7 @@ pub async fn edit_page(
     State(state): State<Arc<AppState>>,
     Query(params): Query<EditQuery>,
 ) -> Result<Html<String>, AppError> {
-    let (slug, title, body) = if let Some(entry) = &params.entry {
+    let (slug, title, tags, body) = if let Some(entry) = &params.entry {
         let entry_slug = Slug::new(entry.clone()).map_err(|e| {
             AppError::new(StatusCode::BAD_REQUEST, format!("invalid entry slug: {e}"))
         })?;
@@ -40,6 +40,17 @@ pub async fn edit_page(
                 format!("entry not found: {entry_slug}"),
             )
         })?;
+        let title = meta.value().title;
+        let tags = {
+            let mut tags: Vec<String> = meta
+                .value()
+                .tags
+                .into_iter()
+                .map(|tag| tag.to_string())
+                .collect();
+            tags.sort();
+            tags.join(", ")
+        };
 
         let bodies_table = tx.open_table(ENTRY_BODY)?;
         let body = bodies_table.get(&entry_slug)?.ok_or_else(|| {
@@ -51,11 +62,12 @@ pub async fn edit_page(
 
         (
             entry_slug.to_string(),
-            meta.value().title,
+            title,
+            tags,
             body.value().raw.into_inner(),
         )
     } else {
-        (String::new(), String::new(), String::new())
+        (String::new(), String::new(), String::new(), String::new())
     };
 
     let user = jar
@@ -66,6 +78,7 @@ pub async fn edit_page(
         .insert("page_title", "Edit")
         .insert("slug", &slug)
         .insert("title", &title)
+        .insert("tags", &tags)
         .insert("body", &body)
         .insert("error", "")
         .insert("user", &user);
@@ -78,6 +91,7 @@ pub struct EditForm {
     pub slug: String,
     pub title: String,
     pub body: String,
+    pub tags: String,
 }
 
 /// handle page save
@@ -101,12 +115,7 @@ pub async fn edit_post(
     };
 
     let mut entries_table = tx.open_table(ENTRIES)?;
-    let existing = entries_table.get(&slug)?.map(|guard| guard.value());
-    let meta = EntryMeta::new(
-        title,
-        username,
-        existing.map(|meta| meta.tags).unwrap_or_default(),
-    );
+    let meta = EntryMeta::new(title, username, Slug::split(&body.tags));
     entries_table.insert(&slug, meta)?;
     drop(entries_table);
 

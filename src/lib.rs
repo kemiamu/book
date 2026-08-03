@@ -25,10 +25,10 @@ pub mod crypto {
 
     impl Mac {
         /// create a mac from input with secret and tag
-        pub fn new(
-            input: impl AsRef<[u8]>,
-            secret: impl AsRef<[u8]>,
-            tag: impl AsRef<[u8]>,
+        pub fn new<I: AsRef<[u8]>, S: AsRef<[u8]>, T: AsRef<[u8]>>(
+            input: I,
+            secret: S,
+            tag: T,
         ) -> Self {
             use sha2::{Digest, Sha256};
             let mut hasher = Sha256::new();
@@ -74,7 +74,7 @@ pub mod crypto {
         }
 
         /// parse a signed string
-        pub fn parse(encoded: impl AsRef<str>, secret: impl AsRef<[u8]>) -> Option<Self> {
+        pub fn parse<E: AsRef<str>, S: AsRef<[u8]>>(encoded: E, secret: S) -> Option<Self> {
             let (hex, sig) = encoded.as_ref().rsplit_once('.')?;
             let data = hex::decode(hex).ok()?;
             let inner = T::deserialize(&data)?;

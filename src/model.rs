@@ -99,21 +99,21 @@ impl FileMeta {
 /// metadata for entries
 pub struct EntryMeta {
     pub title: String,
-    pub tags: HashSet<String>,
+    pub tags: HashSet<Slug>,
     pub editor: Username,
     pub last_modified: i64,
 }
 
 impl EntryMeta {
     /// create new entry metadata
-    pub fn new(
-        title: impl Into<String>,
-        editor: impl Into<Username>,
-        tags: HashSet<String>,
+    pub fn new<T: Into<String>, E: Into<Username>, I: IntoIterator<Item = Slug>>(
+        title: T,
+        editor: E,
+        tags: I,
     ) -> Self {
         Self {
             title: title.into(),
-            tags,
+            tags: tags.into_iter().collect(),
             editor: editor.into(),
             last_modified: time::UtcDateTime::now().unix_timestamp(),
         }
@@ -176,9 +176,9 @@ impl User {
     const PASSWD_TAG: &str = "password";
 
     /// create a new user
-    pub fn new(
-        password: impl AsRef<[u8]>,
-        secret: impl AsRef<[u8]>,
+    pub fn new<P: AsRef<[u8]>, S: AsRef<[u8]>>(
+        password: P,
+        secret: S,
         parent: Option<Username>,
     ) -> Self {
         let password = Mac::new(password, secret, Self::PASSWD_TAG);
@@ -186,7 +186,7 @@ impl User {
     }
 
     /// verify password against stored hash
-    pub fn verify(&self, password: impl AsRef<[u8]>, secret: impl AsRef<[u8]>) -> bool {
+    pub fn verify<P: AsRef<[u8]>, S: AsRef<[u8]>>(&self, password: P, secret: S) -> bool {
         let expected = Mac::new(password, secret, Self::PASSWD_TAG);
         self.password == expected
     }
@@ -360,6 +360,13 @@ impl Slug {
         } else {
             Ok(Self(cow))
         }
+    }
+
+    /// split a string on non-slug characters into valid slugs
+    pub fn split(input: &str) -> impl Iterator<Item = Slug> {
+        input
+            .split(|ch: char| !Self::is_slug_char(ch))
+            .filter_map(|seg| Slug::new(seg.to_string()).ok())
     }
 }
 
