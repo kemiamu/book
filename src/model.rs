@@ -2,11 +2,13 @@ use crate::crypto::{Mac, Signable, Signed};
 use crate::error::AppError;
 use crate::html::HtmlWriter;
 use axum::extract::FromRequestParts;
-use axum::http::{StatusCode, request::Parts};
+use axum::http::StatusCode;
+use axum::http::request::Parts;
 use axum_extra::extract::cookie::CookieJar;
 use redb::TableDefinition as Table;
 use std::borrow::Cow;
 use std::collections::HashSet;
+use std::path::Path;
 
 /// entries table definition
 pub const ENTRIES: Table<Slug, EntryMeta> = Table::new("entries");
@@ -24,6 +26,19 @@ pub const USERS: Table<Username, User> = Table::new("users");
 /// application state
 pub struct AppState {
     pub db: redb::Database,
+}
+
+/// create the database and all tables (idempotent; write transaction creates missing tables)
+pub fn init_tables<P: AsRef<Path>>(path: P) -> Result<redb::Database, redb::Error> {
+    let db = redb::Database::create(path)?;
+    let tx = db.begin_write()?;
+    tx.open_table(ENTRIES)?;
+    tx.open_table(ENTRY_BODY)?;
+    tx.open_table(FILES)?;
+    tx.open_table(FILE_BLOB)?;
+    tx.open_table(USERS)?;
+    tx.commit()?;
+    Ok(db)
 }
 
 // context
@@ -67,7 +82,7 @@ pub struct FileMeta {
 
 impl FileMeta {
     /// create new resource metadata with current timestamp
-    pub fn new(editor: impl Into<Username>) -> Self {
+    pub fn new<E: Into<Username>>(editor: E) -> Self {
         Self {
             editor: editor.into(),
             last_modified: time::UtcDateTime::now().unix_timestamp(),
@@ -107,7 +122,7 @@ pub struct Markdown(String);
 
 impl Markdown {
     /// create markdown from string
-    pub fn new(content: impl Into<String>) -> Self {
+    pub fn new<C: Into<String>>(content: C) -> Self {
         Self(content.into())
     }
 
@@ -181,9 +196,10 @@ pub struct Passkey {
 
 impl Passkey {
     pub const EXPIRY_SECS: i64 = 7 * 24 * 60 * 60;
+    const BOOTSTRAP_EXPIRY_SECS: i64 = 24 * 60 * 60;
 
     /// create an invitation passkey for a known user
-    pub fn new(creator: impl Into<Username>) -> Self {
+    pub fn new<C: Into<Username>>(creator: C) -> Self {
         let now = time::UtcDateTime::now().unix_timestamp();
         Self {
             creator: Some(creator.into()),
@@ -196,7 +212,7 @@ impl Passkey {
         let now = time::UtcDateTime::now().unix_timestamp();
         Self {
             creator: None,
-            expires_at: now + Self::EXPIRY_SECS,
+            expires_at: now + Self::BOOTSTRAP_EXPIRY_SECS,
         }
     }
 
@@ -250,7 +266,7 @@ impl Session {
     pub const EXPIRY_SECS: i64 = 3650 * 24 * 60 * 60;
 
     /// create a new session
-    pub fn new(user: impl Into<Username>) -> Self {
+    pub fn new<U: Into<Username>>(user: U) -> Self {
         let now = time::UtcDateTime::now().unix_timestamp();
         Self {
             user: user.into(),
@@ -328,7 +344,7 @@ impl Slug {
     }
 
     /// validate and create a new slug
-    pub fn new(value: impl Into<Cow<'static, str>>) -> Result<Self, &'static str> {
+    pub fn new<V: Into<Cow<'static, str>>>(value: V) -> Result<Self, &'static str> {
         let cow = value.into();
         if cow.is_empty() {
             Err("slug must not be empty")

@@ -85,7 +85,7 @@ pub async fn entry_delete(
 // ++++++++++++============++++++++++++============++++++++++++============
 
 /// create a 500 internal server error response
-fn internal_error(error: impl ToString) -> (StatusCode, Json<serde_json::Value>) {
+fn internal_error<E: ToString>(error: E) -> (StatusCode, Json<serde_json::Value>) {
     (
         StatusCode::INTERNAL_SERVER_ERROR,
         Json(serde_json::json!({"error": error.to_string()})),
@@ -93,7 +93,7 @@ fn internal_error(error: impl ToString) -> (StatusCode, Json<serde_json::Value>)
 }
 
 /// create an error response with status code
-fn err(status: StatusCode, msg: impl ToString) -> (StatusCode, Json<serde_json::Value>) {
+fn err<M: ToString>(status: StatusCode, msg: M) -> (StatusCode, Json<serde_json::Value>) {
     (status, Json(serde_json::json!({"error": msg.to_string()})))
 }
 

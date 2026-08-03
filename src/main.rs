@@ -2,19 +2,30 @@ use axum::Router;
 use axum::extract::DefaultBodyLimit;
 use axum::routing::{get, post};
 use book::CONFIG;
-use book::model::AppState;
-mod routes;
+use book::model::{AppState, init_tables};
 use redb::Database;
+use std::path::Path;
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tower_http::{compression::CompressionLayer, services::ServeDir};
+use tower_http::compression::CompressionLayer;
+use tower_http::services::ServeDir;
+
+mod routes;
+
+/// open the database, creating and initializing tables on first run
+fn init_db<P: AsRef<Path>>(path: P) -> Option<Database> {
+    match path.as_ref().exists() {
+        true => Database::open(path).ok(),
+        false => init_tables(path).ok(),
+    }
+}
 
 /// entry point
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt().without_time().init();
 
-    let db = Database::open("data.redb").expect("failed to open database");
+    let db = init_db("data.redb").expect("failed to initialize database");
     let listener = TcpListener::bind(&CONFIG.server_addr).await.unwrap();
 
     let app = Router::new()

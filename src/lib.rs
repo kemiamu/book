@@ -83,7 +83,7 @@ pub mod crypto {
         }
 
         /// generate a signed string
-        pub fn generate(&self, secret: impl AsRef<[u8]>) -> String {
+        pub fn generate<S: AsRef<[u8]>>(&self, secret: S) -> String {
             let data = self.inner.serialize();
             let sig = Mac::new(&data, secret, T::tag());
             format!("{}.{}", hex::encode(&data), sig)
@@ -92,6 +92,8 @@ pub mod crypto {
 }
 
 pub mod config {
+    use std::{error::Error, path::Path};
+
     #[derive(serde::Deserialize)]
     /// server configuration
     pub struct Config {
@@ -104,7 +106,7 @@ pub mod config {
 
     impl Config {
         /// load config from toml file
-        pub fn init(file: impl AsRef<std::path::Path>) -> Result<Self, Box<dyn std::error::Error>> {
+        pub fn init<P: AsRef<Path>>(file: P) -> Result<Self, Box<dyn Error>> {
             Ok(toml::from_str(&std::fs::read_to_string(file)?)?)
         }
     }
@@ -139,7 +141,7 @@ pub mod error {
 
     impl AppError {
         /// create a new app error
-        pub fn new(status: StatusCode, msg: impl Into<BoxErr>) -> Self {
+        pub fn new<M: Into<BoxErr>>(status: StatusCode, msg: M) -> Self {
             let inner = msg.into();
             Self { inner, status }
         }
