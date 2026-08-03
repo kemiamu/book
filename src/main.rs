@@ -33,6 +33,14 @@ async fn main() {
         .route("/{category}/README.md", get(routes::category_page))
         .route("/{category}/{entry}/README.md", get(routes::entry_page))
         .route("/{category}/{entry}/{file}", get(routes::file_download))
+        .route(
+            "/{category}/{entry}/{file}/info",
+            get(routes::file_info_page),
+        )
+        .route(
+            "/{category}/{entry}/{file}/delete",
+            post(routes::file_delete),
+        )
         .route("/{category}/{entry}/delete", post(routes::entry_delete))
         // static files
         .route("/robots.txt", get(routes::robots_txt))

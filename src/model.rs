@@ -373,7 +373,7 @@ slug_key!(UserKey, 32, '-' | '_');
 
 /// validated slug: non-empty, single URL path segment, tagged with its rule
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize)]
-#[serde(bound(serialize = ""))]
+#[serde(bound(serialize = ""), transparent)]
 #[repr(transparent)]
 pub struct Slug<T: SlugRule>(Cow<'static, str>, PhantomData<T>);
 

@@ -8,7 +8,7 @@ const BASE = "{{ base_path }}";
 function editApp() {
   return {
     categorySlug: "",
-    slug: "",
+    entrySlug: "",
     title: "",
     body: "",
     error: "",
@@ -17,11 +17,11 @@ function editApp() {
     init() {
       const el = this.$el;
       this.categorySlug = el.dataset.category || "";
-      this.slug = el.dataset.slug || "";
+      this.entrySlug = el.dataset.entry || "";
       this.title = el.dataset.title || "";
       this.body = el.dataset.body || "";
       this.error = el.dataset.error || "";
-      this.isNew = !el.dataset.category && !el.dataset.slug;
+      this.isNew = !el.dataset.category && !el.dataset.entry;
     },
     togglePreview() {
       this.preview = !this.preview;
@@ -35,15 +35,15 @@ function editApp() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             category: this.categorySlug,
-            slug: this.slug,
+            entry: this.entrySlug,
             title: this.title,
             body: this.body,
           }),
         });
         if (r.ok) {
           const dest = this.isNew
-            ? BASE + "/edit?category=" + encodeURIComponent(this.categorySlug) + "&entry=" + encodeURIComponent(this.slug)
-            : BASE + "/" + encodeURIComponent(this.categorySlug) + "/" + encodeURIComponent(this.slug) + "/README.md";
+            ? BASE + "/edit?category=" + encodeURIComponent(this.categorySlug) + "&entry=" + encodeURIComponent(this.entrySlug)
+            : BASE + "/" + encodeURIComponent(this.categorySlug) + "/" + encodeURIComponent(this.entrySlug) + "/README.md";
           window.location.href = dest;
         } else {
           const t = await r.text();
@@ -63,17 +63,17 @@ function editApp() {
 {% block body %}
 <section class="section">
   <div class="container container-narrow">
-    <h1 class="title">{% if slug | length > 0 %}Edit Entry{% else %}New Entry{% endif %}</h1>
+    <h1 class="title">{% if entry | length > 0 %}Edit Entry{% else %}New Entry{% endif %}</h1>
     <form
       x-data="editApp()"
       x-on:submit.prevent="submit"
       data-category="{{ category }}"
-      data-slug="{{ slug }}"
+      data-entry="{{ entry }}"
       data-title="{{ title }}"
       data-body="{{ body }}"
       data-error="{{ error }}"
     >
-      {% if slug | length == 0 %}
+      {% if entry | length == 0 %}
       <div class="field">
         <label class="label" for="category">Category</label>
         <div class="control">
@@ -88,15 +88,15 @@ function editApp() {
         </div>
       </div>
       <div class="field">
-        <label class="label" for="slug">Slug (URL name)</label>
+        <label class="label" for="entry">Entry (URL name)</label>
         <div class="control">
           <input
             class="input"
             type="text"
-            id="slug"
-            x-model="slug"
+            id="entry"
+            x-model="entrySlug"
             required
-            placeholder="my-page-slug"
+            placeholder="my-entry-slug"
           />
         </div>
       </div>
@@ -104,12 +104,12 @@ function editApp() {
       {{ form::input(label="Title", id="title", model="title", required=true, placeholder="Page title") }}
       {{ form::textarea(label="Body (Markdown)", id="body", model="body", placeholder="Write content in Markdown...") }}
       {% endif %}
-      {% if slug | length > 0 %}
-        {% set cancel_url = base_path ~ "/" ~ category ~ "/" ~ slug ~ "/README.md" %}
+      {% if entry | length > 0 %}
+        {% set cancel_url = base_path ~ "/" ~ category ~ "/" ~ entry ~ "/README.md" %}
       {% else %}
         {% set cancel_url = base_path ~ "/" %}
       {% endif %}
-      {% if slug | length > 0 %}
+      {% if entry | length > 0 %}
       {{ form::button_group(submit_text="Save", loading_text="Saving...", cancel_url=cancel_url) }}
       {% else %}
       {{ form::button_group(submit_text="Create", loading_text="Creating...", cancel_url=cancel_url) }}

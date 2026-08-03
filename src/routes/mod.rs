@@ -1,7 +1,7 @@
 use axum::response::{Html, IntoResponse};
 use axum::{Json, extract::Path, extract::State, http::StatusCode};
 use axum_extra::extract::cookie::CookieJar;
-use book::model::{AppState, CategoryKey, ENTRIES, ENTRY_BODY, EntryKey, EntryMeta};
+use book::model::{AppState, CategoryKey, ENTRIES, ENTRY_BODY, EntryKey, EntryMeta, FileKey};
 use book::model::{FILE_BLOB, FILES, FilePath, PageContext, Passkey, Session, Slug, UserToken};
 use book::{CONFIG, crypto::Signed, error::AppError};
 use redb::{ReadableDatabase, ReadableTable};
@@ -212,11 +212,11 @@ pub async fn category_page(
 pub async fn entry_page(
     jar: CookieJar,
     State(state): State<Arc<AppState>>,
-    Path((category, slug)): Path<(String, String)>,
+    Path((category, entry)): Path<(String, String)>,
 ) -> Result<Html<String>, AppError> {
     let category = Slug::new(category).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
-    let slug = Slug::new(slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
-    let key = (category, slug);
+    let entry = Slug::new(entry).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let key = (category, entry);
     let tx = state.db.begin_read()?;
 
     let entries_table = tx.open_table(ENTRIES)?;
@@ -246,16 +246,39 @@ pub async fn entry_page(
         .and_then(|date| date.format(&Iso8601::DATE).ok())
         .unwrap_or_default();
 
+    let files_table = tx.open_table(FILES)?;
+    let mut files: Vec<Slug<FileKey>> = Vec::new();
+    for result in files_table.iter()? {
+        let (file_key, _) = result?;
+        let (file_category, file_entry, file_name) = file_key.value();
+        if file_category == key.0 && file_entry == key.1 {
+            files.push(file_name);
+        }
+    }
+
+    let base = CONFIG.base_path();
+    let files: Vec<serde_json::Value> = files
+        .into_iter()
+        .map(|file| {
+            serde_json::json!({
+                "href": format!("{base}/{}/{}/{}/info", key.0, key.1, file),
+                "title": file,
+            })
+        })
+        .collect();
+
     let page = PageContext::new()
         .insert("page_title", &entry_meta.title)
         .insert("content", &body.value().html)
         .insert("user", &user)
         .insert("category", &key.0)
-        .insert("slug", &key.1)
+        .insert("entry", &key.1)
         .insert("page_category", &key.0)
-        .insert("page_slug", &key.1)
+        .insert("page_entry", &key.1)
+        .insert("page_kind", "entry")
         .insert("page_date", &date)
-        .insert("page_editor", &entry_meta.editor);
+        .insert("page_editor", &entry_meta.editor)
+        .insert("files", &files);
     Ok(Html(page.render("entry.html")?))
 }
 

@@ -1,0 +1,20 @@
+{% extends "_base.html" %}
+{% block title %}{{ file }} - {{ site_title }}{% endblock title %}
+{% block body %}
+<section class="section">
+  <div class="container container-narrow">
+    <h1 class="title">{{ file }}</h1>
+    <p class="subtitle text-muted">{{ category }} / {{ entry }}</p>
+    <hr />
+    <div class="block">
+      <p><span class="text-muted">Editor:</span> {{ file_editor }}</p>
+      <p><span class="text-muted">Last modified:</span> {{ file_date }}</p>
+      <p><span class="text-muted">Size:</span> {{ file_size }} bytes</p>
+    </div>
+    <div class="btn-group">
+      <a class="btn btn-primary" href="{{ base_path }}/{{ category }}/{{ entry }}/{{ file }}">Download</a>
+      <a class="btn" href="{{ base_path }}/{{ category }}/{{ entry }}/README.md">Back to Entry</a>
+    </div>
+  </div>
+</section>
+{% endblock body %}

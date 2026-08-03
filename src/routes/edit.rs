@@ -21,7 +21,7 @@ pub async fn edit_page(
     State(state): State<Arc<AppState>>,
     Query(params): Query<EditQuery>,
 ) -> Result<Html<String>, AppError> {
-    let (category, slug, title, body) =
+    let (category, entry, title, body) =
         if let (Some(category), Some(entry)) = (&params.category, &params.entry) {
             let category = Slug::new(category.clone()).map_err(|e| {
                 AppError::new(
@@ -69,7 +69,7 @@ pub async fn edit_page(
     let page = PageContext::new()
         .insert("page_title", "Edit")
         .insert("category", &category)
-        .insert("slug", &slug)
+        .insert("entry", &entry)
         .insert("title", &title)
         .insert("body", &body)
         .insert("error", "")
@@ -81,7 +81,7 @@ pub async fn edit_page(
 /// edit form payload
 pub struct EditForm {
     pub category: String,
-    pub slug: String,
+    pub entry: String,
     pub title: String,
     pub body: String,
 }
@@ -98,10 +98,10 @@ pub async fn edit_post(
 
     let category =
         Slug::new(body.category).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
-    let slug = Slug::new(body.slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
-    let key = (category, slug);
+    let entry = Slug::new(body.entry).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let key = (category, entry);
 
-    // a fresh entry can be created with just a slug; fall back to the slug
+    // a fresh entry can be created with just an entry slug; fall back to it
     // as the title until a real one is provided
     let title = if body.title.is_empty() {
         key.1.as_ref()

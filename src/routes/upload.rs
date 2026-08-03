@@ -1,10 +1,13 @@
+use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Redirect, Response};
-use axum::{Json, extract::Multipart, extract::Query, extract::State, http::StatusCode};
+use axum::{Json, extract::Multipart, extract::Path, extract::Query, extract::State};
 use axum_extra::extract::cookie::CookieJar;
 use book::model::{AppState, FILE_BLOB, FILES, FileMeta, PageContext, Session, Slug, UserToken};
 use book::{CONFIG, crypto::Signed, error::AppError};
+use redb::ReadableDatabase;
 use serde::Deserialize;
 use std::sync::Arc;
+use time::{OffsetDateTime, format_description::well_known::Iso8601};
 
 #[derive(Deserialize)]
 pub struct UploadQuery {
@@ -141,4 +144,90 @@ pub async fn file_upload_post(
     tx.commit()?;
 
     Ok((StatusCode::CREATED, Json(serde_json::json!({}))))
+}
+
+// file info / delete
+//
+// ++++++++++++============++++++++++++============++++++++++++============
+
+/// show file information and management page
+pub async fn file_info_page(
+    jar: CookieJar,
+    State(state): State<Arc<AppState>>,
+    Path((category, entry, file)): Path<(String, String, String)>,
+) -> Result<Html<String>, AppError> {
+    let category = Slug::new(category).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let entry = Slug::new(entry).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let file = Slug::new(file).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let key = (category, entry, file);
+    let tx = state.db.begin_read()?;
+
+    let files_table = tx.open_table(FILES)?;
+    let Some(meta) = files_table.get(&key)? else {
+        return Err(AppError::new(
+            StatusCode::NOT_FOUND,
+            format!("file not found: {}/{}/{}", key.0, key.1, key.2),
+        ));
+    };
+    let file_meta = meta.value();
+
+    let blobs_table = tx.open_table(FILE_BLOB)?;
+    let size = blobs_table
+        .get(&key)?
+        .map(|blob| blob.value().len())
+        .unwrap_or(0);
+
+    let date = OffsetDateTime::from_unix_timestamp(file_meta.last_modified)
+        .ok()
+        .and_then(|date| date.format(&Iso8601::DATE).ok())
+        .unwrap_or_default();
+
+    let user = jar
+        .get("session")
+        .and_then(|cookie| Signed::<Session>::parse(cookie.value(), &CONFIG.secret))
+        .map(|session| session.inner.user);
+
+    let page = PageContext::new()
+        .insert("page_title", &key.2)
+        .insert("category", &key.0)
+        .insert("entry", &key.1)
+        .insert("file", &key.2)
+        .insert("page_category", &key.0)
+        .insert("page_entry", &key.1)
+        .insert("page_file", &key.2)
+        .insert("page_kind", "file")
+        .insert("file_editor", &file_meta.editor)
+        .insert("file_date", &date)
+        .insert("file_size", &size)
+        .insert("user", &user);
+    Ok(Html(page.render("file.html")?))
+}
+
+/// delete a file and its blob, redirecting back to the entry page
+pub async fn file_delete(
+    UserToken(token): UserToken,
+    State(state): State<Arc<AppState>>,
+    Path((category, entry, file)): Path<(String, String, String)>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let _username = token?;
+    let category = Slug::new(category).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let entry = Slug::new(entry).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let file = Slug::new(file).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let key = (category, entry, file);
+    let tx = state.db.begin_write()?;
+
+    let mut files_table = tx.open_table(FILES)?;
+    files_table.remove(&key)?;
+    drop(files_table);
+
+    let mut blobs_table = tx.open_table(FILE_BLOB)?;
+    blobs_table.remove(&key)?;
+    drop(blobs_table);
+
+    tx.commit()?;
+
+    let base = CONFIG.base_path();
+    Ok(Json(
+        serde_json::json!({"redirect": format!("{base}/{}/{}/README.md", key.0, key.1)}),
+    ))
 }
