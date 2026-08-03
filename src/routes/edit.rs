@@ -7,7 +7,7 @@ use book::CONFIG;
 use book::crypto::Signed;
 use book::error::AppError;
 use book::model::{AppState, ENTRIES, ENTRY_BODY, EntryBody, EntryMeta};
-use book::model::{Markdown, PageContext, Session, Slug, UserToken};
+use book::model::{Markdown, PageContext, Session, Slug, TagKey, UserToken};
 use redb::ReadableDatabase;
 use serde::Deserialize;
 use std::sync::Arc;
@@ -113,7 +113,7 @@ pub async fn edit_post(
     };
 
     let mut entries_table = tx.open_table(ENTRIES)?;
-    let meta = EntryMeta::new(title, username, Slug::split(&body.tags));
+    let meta = EntryMeta::new(title, username, Slug::<TagKey>::split(&body.tags));
     entries_table.insert(&slug, meta)?;
     drop(entries_table);
 

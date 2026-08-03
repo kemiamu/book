@@ -7,7 +7,7 @@ use book::CONFIG;
 use book::crypto::Signed;
 use book::error::AppError;
 use book::model::{AppState, ENTRIES, ENTRY_BODY, EntryMeta, FILES};
-use book::model::{FILE_BLOB, PageContext, Passkey, Session, Slug, UserToken};
+use book::model::{EntryKey, FILE_BLOB, FileKey, PageContext, Passkey, Session, Slug, UserToken};
 use redb::{ReadableDatabase, ReadableTable};
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -37,7 +37,7 @@ pub async fn entry_delete(
     let tx = state.db.begin_write()?;
 
     // collect all file keys for this entry
-    let files_to_remove: Vec<(Slug, Slug)> = {
+    let files_to_remove: Vec<(Slug<EntryKey>, Slug<FileKey>)> = {
         let files_table = tx.open_table(FILES)?;
         let mut keys = Vec::new();
         for result in files_table.iter()? {

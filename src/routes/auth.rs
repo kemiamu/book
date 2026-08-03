@@ -7,7 +7,7 @@ use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use book::CONFIG;
 use book::crypto::Signed;
 use book::error::AppError;
-use book::model::{AppState, PageContext, Passkey, Session, USERS, User, Username};
+use book::model::{AppState, PageContext, Passkey, Session, Slug, USERS, User, UserKey};
 use redb::{ReadableDatabase, ReadableTable};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -55,7 +55,7 @@ pub async fn sign_in_post(
     let _passkey = Signed::<Passkey>::parse(&body.passkey, &CONFIG.secret)
         .ok_or_else(|| err(StatusCode::UNAUTHORIZED, "Invalid or expired passkey"))?;
 
-    let username = Username::new(body.username).map_err(|e| err(StatusCode::BAD_REQUEST, e))?;
+    let username = Slug::new(body.username).map_err(|e| err(StatusCode::BAD_REQUEST, e))?;
 
     let tx = state.db.begin_read().map_err(internal_error)?;
     let table = tx.open_table(USERS).map_err(internal_error)?;
@@ -98,7 +98,7 @@ pub async fn sign_up_post(
     let passkey = Signed::<Passkey>::parse(&body.passkey, &CONFIG.secret)
         .ok_or_else(|| err(StatusCode::UNAUTHORIZED, "Invalid or expired passkey"))?;
 
-    let username = Username::new(body.username).map_err(|e| err(StatusCode::BAD_REQUEST, e))?;
+    let username = Slug::new(body.username).map_err(|e| err(StatusCode::BAD_REQUEST, e))?;
 
     let tx = state.db.begin_write().map_err(internal_error)?;
     let mut table = tx.open_table(USERS).map_err(internal_error)?;
@@ -135,7 +135,7 @@ pub async fn sign_out(jar: CookieJar, headers: HeaderMap) -> impl IntoResponse {
 // ++++++++++++============++++++++++++============++++++++++++============
 
 /// set session cookie on the jar
-fn set_session_cookie(jar: CookieJar, username: Username, secret: &str) -> CookieJar {
+fn set_session_cookie(jar: CookieJar, username: Slug<UserKey>, secret: &str) -> CookieJar {
     let token = Signed::new(Session::new(username)).generate(secret);
     let cookie = Cookie::build(("session", token))
         .path("/")

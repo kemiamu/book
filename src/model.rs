@@ -8,20 +8,21 @@ use axum_extra::extract::cookie::CookieJar;
 use redb::TableDefinition as Table;
 use std::borrow::Cow;
 use std::collections::HashSet;
+use std::marker::PhantomData;
 use std::path::Path;
 
 /// entries table definition
-pub const ENTRIES: Table<Slug, EntryMeta> = Table::new("entries");
+pub const ENTRIES: Table<Slug<EntryKey>, EntryMeta> = Table::new("entries");
 /// entry body table definition (raw markdown + rendered html)
-pub const ENTRY_BODY: Table<Slug, EntryBody> = Table::new("entry_body");
+pub const ENTRY_BODY: Table<Slug<EntryKey>, EntryBody> = Table::new("entry_body");
 
 /// files table definition
-pub const FILES: Table<(Slug, Slug), FileMeta> = Table::new("files");
+pub const FILES: Table<(Slug<EntryKey>, Slug<FileKey>), FileMeta> = Table::new("files");
 /// file blob table definition
-pub const FILE_BLOB: Table<(Slug, Slug), Vec<u8>> = Table::new("file_blob");
+pub const FILE_BLOB: Table<(Slug<EntryKey>, Slug<FileKey>), Vec<u8>> = Table::new("file_blob");
 
 /// users table definition
-pub const USERS: Table<Username, User> = Table::new("users");
+pub const USERS: Table<Slug<UserKey>, User> = Table::new("users");
 
 /// application state
 pub struct AppState {
@@ -81,13 +82,13 @@ impl PageContext {
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// file metadata
 pub struct FileMeta {
-    pub editor: Username,
+    pub editor: Slug<UserKey>,
     pub last_modified: i64,
 }
 
 impl FileMeta {
     /// create new resource metadata with current timestamp
-    pub fn new<E: Into<Username>>(editor: E) -> Self {
+    pub fn new<E: Into<Slug<UserKey>>>(editor: E) -> Self {
         Self {
             editor: editor.into(),
             last_modified: time::UtcDateTime::now().unix_timestamp(),
@@ -99,14 +100,14 @@ impl FileMeta {
 /// metadata for entries
 pub struct EntryMeta {
     pub title: String,
-    pub tags: HashSet<Slug>,
-    pub editor: Username,
+    pub tags: HashSet<Slug<TagKey>>,
+    pub editor: Slug<UserKey>,
     pub last_modified: i64,
 }
 
 impl EntryMeta {
     /// create new entry metadata
-    pub fn new<T: Into<String>, E: Into<Username>, I: IntoIterator<Item = Slug>>(
+    pub fn new<T: Into<String>, E: Into<Slug<UserKey>>, I: IntoIterator<Item = Slug<TagKey>>>(
         title: T,
         editor: E,
         tags: I,
@@ -169,7 +170,7 @@ impl EntryBody {
 /// a registered user
 pub struct User {
     password: Mac,
-    pub parent: Option<Username>,
+    pub parent: Option<Slug<UserKey>>,
 }
 
 impl User {
@@ -179,7 +180,7 @@ impl User {
     pub fn new<P: AsRef<[u8]>, S: AsRef<[u8]>>(
         password: P,
         secret: S,
-        parent: Option<Username>,
+        parent: Option<Slug<UserKey>>,
     ) -> Self {
         let password = Mac::new(password, secret, Self::PASSWD_TAG);
         Self { password, parent }
@@ -195,7 +196,7 @@ impl User {
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// authorization passkey token
 pub struct Passkey {
-    creator: Option<Username>,
+    creator: Option<Slug<UserKey>>,
     expires_at: i64,
 }
 
@@ -204,7 +205,7 @@ impl Passkey {
     const BOOTSTRAP_EXPIRY_SECS: i64 = 24 * 60 * 60;
 
     /// create an invitation passkey for a known user
-    pub fn new<C: Into<Username>>(creator: C) -> Self {
+    pub fn new<C: Into<Slug<UserKey>>>(creator: C) -> Self {
         let now = time::UtcDateTime::now().unix_timestamp();
         Self {
             creator: Some(creator.into()),
@@ -222,12 +223,12 @@ impl Passkey {
     }
 
     /// the inviting user, if this is an invitation passkey
-    pub fn creator(&self) -> Option<&Username> {
+    pub fn creator(&self) -> Option<&Slug<UserKey>> {
         self.creator.as_ref()
     }
 
     /// consume the passkey, returning its creator
-    pub fn into_creator(self) -> Option<Username> {
+    pub fn into_creator(self) -> Option<Slug<UserKey>> {
         self.creator
     }
 
@@ -263,7 +264,7 @@ impl Signable for Passkey {
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// user session token
 pub struct Session {
-    pub user: Username,
+    pub user: Slug<UserKey>,
     pub expires_at: i64,
 }
 
@@ -271,7 +272,7 @@ impl Session {
     pub const EXPIRY_SECS: i64 = 3650 * 24 * 60 * 60;
 
     /// create a new session
-    pub fn new<U: Into<Username>>(user: U) -> Self {
+    pub fn new<U: Into<Slug<UserKey>>>(user: U) -> Self {
         let now = time::UtcDateTime::now().unix_timestamp();
         Self {
             user: user.into(),
@@ -301,7 +302,7 @@ impl Signable for Session {
 
 /// authenticated user extracted from session cookie
 #[derive(Debug)]
-pub struct UserToken(pub Result<Username, AppError>);
+pub struct UserToken(pub Result<Slug<UserKey>, AppError>);
 
 impl<S: Send + Sync + 'static> FromRequestParts<S> for UserToken {
     type Rejection = std::convert::Infallible;
@@ -334,57 +335,80 @@ impl<S: Send + Sync + 'static> FromRequestParts<S> for UserToken {
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
-/// username alias of slug: a slug with the meaning of a user identifier
-pub type Username = Slug;
+/// validation rules for a kind of slug: max length + allowed characters
+pub trait SlugRule {
+    /// maximum length in bytes
+    const MAX_LEN: usize;
 
-/// validated slug: non-empty, single URL path segment
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    /// whether a character is allowed
+    fn is_allowed(ch: char) -> bool;
+}
+
+/// define a slug marker type with its validation rule
+macro_rules! slug_key {
+    ($name:ident, $len:expr, $($ch:literal)|+) => {
+        #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        pub struct $name;
+
+        impl SlugRule for $name {
+            const MAX_LEN: usize = $len;
+
+            fn is_allowed(ch: char) -> bool {
+                ch.is_ascii_alphanumeric() || matches!(ch, $($ch)|+)
+            }
+        }
+    };
+}
+
+slug_key!(EntryKey, 255, '-' | '_');
+slug_key!(FileKey, 255, '-' | '_' | '.');
+slug_key!(UserKey, 32, '-' | '_');
+slug_key!(TagKey, 32, '-' | '_');
+
+/// validated slug: non-empty, single URL path segment, tagged with its rule
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize)]
+#[serde(bound(serialize = ""))]
 #[repr(transparent)]
-pub struct Slug(Cow<'static, str>);
+pub struct Slug<T: SlugRule>(Cow<'static, str>, PhantomData<T>);
 
-impl Slug {
-    /// check if a char is allowed in a slug
-    fn is_slug_char(ch: char) -> bool {
-        ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' || ch == '.'
-    }
-
+impl<T: SlugRule> Slug<T> {
     /// validate and create a new slug
     pub fn new<V: Into<Cow<'static, str>>>(value: V) -> Result<Self, &'static str> {
         let cow = value.into();
         if cow.is_empty() {
             Err("slug must not be empty")
-        } else if cow.len() > 255 {
-            Err("slug must be at most 255 bytes")
-        } else if !cow.chars().all(Self::is_slug_char) {
-            Err("slug may only contain a-z, A-Z, 0-9, '-', '_' and '.'")
+        } else if cow.len() > T::MAX_LEN {
+            Err("slug exceeds the max length")
+        } else if !cow.chars().all(T::is_allowed) {
+            Err("slug contains disallowed characters")
         } else {
-            Ok(Self(cow))
+            Ok(Self(cow, PhantomData))
         }
     }
 
-    /// split a string on non-slug characters into valid slugs
-    pub fn split(input: &str) -> impl Iterator<Item = Slug> {
+    /// split a string on disallowed characters into valid slugs
+    pub fn split(input: &str) -> impl Iterator<Item = Slug<T>> {
         input
-            .split(|ch: char| !Self::is_slug_char(ch))
+            .split(|ch: char| !T::is_allowed(ch))
             .filter_map(|seg| Slug::new(seg.to_string()).ok())
     }
 }
 
-impl std::fmt::Display for Slug {
+impl<T: SlugRule> std::fmt::Display for Slug<T> {
     /// format as plain string
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl AsRef<str> for Slug {
+impl<T: SlugRule> AsRef<str> for Slug<T> {
     /// borrow the underlying string
     fn as_ref(&self) -> &str {
         &self.0
     }
 }
 
-impl std::ops::Deref for Slug {
+impl<T: SlugRule> std::ops::Deref for Slug<T> {
     type Target = str;
 
     /// deref to the underlying string
@@ -393,25 +417,11 @@ impl std::ops::Deref for Slug {
     }
 }
 
-impl serde::Serialize for Slug {
-    /// serialize as a plain string
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        s.serialize_str(&self.0)
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for Slug {
+impl<'de, T: SlugRule> serde::Deserialize<'de> for Slug<T> {
     /// deserialize with validation
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let raw = String::deserialize(d)?;
         Slug::new(raw).map_err(serde::de::Error::custom)
-    }
-}
-
-impl redb::Key for Slug {
-    /// keys are ordered by raw bytes, same as `str`
-    fn compare(a: &[u8], b: &[u8]) -> std::cmp::Ordering {
-        a.cmp(b)
     }
 }
 
@@ -457,9 +467,29 @@ macro_rules! impl_stored {
     };
 }
 
+/// implement redb::Key by raw byte comparison
+macro_rules! impl_key {
+    ($ty:ty) => {
+        impl redb::Key for $ty {
+            /// keys are ordered by raw bytes, same as `str`
+            fn compare(a: &[u8], b: &[u8]) -> std::cmp::Ordering {
+                a.cmp(b)
+            }
+        }
+    };
+}
+
 impl_stored!(FileMeta);
 impl_stored!(EntryMeta);
 impl_stored!(Markdown);
 impl_stored!(EntryBody);
 impl_stored!(User);
-impl_stored!(Slug);
+impl_stored!(Slug<EntryKey>);
+impl_stored!(Slug<FileKey>);
+impl_stored!(Slug<UserKey>);
+impl_stored!(Slug<TagKey>);
+
+impl_key!(Slug<EntryKey>);
+impl_key!(Slug<FileKey>);
+impl_key!(Slug<UserKey>);
+impl_key!(Slug<TagKey>);
