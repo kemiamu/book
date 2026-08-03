@@ -2,16 +2,23 @@
 <a href="{{ base_path }}/" class="text-muted">Back to Home</a>
 {% endmacro back_link %}
 
-{% macro page_header(title, current, breadcrumb_text, category, entry, user) %}
+{% macro breadcrumb(items) %}
+<nav class="breadcrumb" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="{{ base_path }}/">Home</a></li>
+    {% for item in items %}
+    <li {% if loop.last %}class="breadcrumb-active"{% endif %}>
+      {% if item.href %}<a href="{{ item.href }}">{{ item.label }}</a>{% else %}<span class="text-muted" aria-current="page">{{ item.label }}</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</nav>
+{% endmacro breadcrumb %}
+
+{% macro page_header(title, category, entry, user) %}
 <div class="page-header">
   <div>
     <h1 class="title mb-0 pb-2">{{ title }}</h1>
-    <nav class="breadcrumb" aria-label="breadcrumbs">
-      <ul>
-        <li><a href="{{ base_path }}/">Home</a></li>
-        <li class="breadcrumb-active"><a href="#" class="text-muted" aria-current="page">{{ breadcrumb_text | default(value=title) }}</a></li>
-      </ul>
-    </nav>
   </div>
   {% if user %}
   <div class="page-header-actions">

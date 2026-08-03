@@ -128,7 +128,9 @@ pub mod error {
     // ++++++++++++============++++++++++++============++++++++++++============
 
     use crate::model::PageContext;
-    use axum::{http::StatusCode, response::Html, response::IntoResponse, response::Response};
+    use axum::{
+        Json, http::StatusCode, response::Html, response::IntoResponse, response::Response,
+    };
 
     type BoxErr = Box<dyn std::error::Error + Send + Sync>;
 
@@ -136,6 +138,7 @@ pub mod error {
     pub struct AppError {
         status: StatusCode,
         inner: BoxErr,
+        json: bool,
     }
 
     impl std::fmt::Debug for AppError {
@@ -151,15 +154,35 @@ pub mod error {
     impl AppError {
         /// create a new app error
         pub fn new<M: Into<BoxErr>>(status: StatusCode, msg: M) -> Self {
-            let inner = msg.into();
-            Self { inner, status }
+            Self {
+                inner: msg.into(),
+                status,
+                json: false,
+            }
+        }
+
+        /// create an error that responds with json instead of an html page
+        pub fn json<M: Into<BoxErr>>(status: StatusCode, msg: M) -> Self {
+            Self {
+                inner: msg.into(),
+                status,
+                json: true,
+            }
         }
     }
 
     impl IntoResponse for AppError {
-        /// render error as html response
+        /// render error as html page, or json for api endpoints
         fn into_response(self) -> Response {
             tracing::error!("{:?}", self);
+
+            if self.json {
+                return (
+                    self.status,
+                    Json(serde_json::json!({"error": self.inner.to_string()})),
+                )
+                    .into_response();
+            }
 
             let html = PageContext::new()
                 .insert("code", &self.status.as_u16())

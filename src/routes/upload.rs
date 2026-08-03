@@ -1,8 +1,13 @@
+use super::BreadcrumbItem;
+use super::path_slug;
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::{Json, extract::Multipart, extract::Path, extract::Query, extract::State};
 use axum_extra::extract::cookie::CookieJar;
-use book::model::{AppState, FILE_BLOB, FILES, FileMeta, PageContext, Session, Slug, UserToken};
+use book::model::{
+    AppState, CategoryKey, EntryKey, FILE_BLOB, FILES, FileKey, FileMeta, PageContext, Session,
+    Slug, UserToken,
+};
 use book::{CONFIG, crypto::Signed, error::AppError};
 use redb::ReadableDatabase;
 use serde::Deserialize;
@@ -123,11 +128,9 @@ pub async fn file_upload_post(
         return Err(AppError::new(StatusCode::BAD_REQUEST, "No file uploaded"));
     };
 
-    let category_slug =
-        Slug::new(category_slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
-    let entry_slug =
-        Slug::new(entry_slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
-    let file_slug = Slug::new(file_slug).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let category_slug = path_slug::<CategoryKey>(&category_slug)?;
+    let entry_slug = path_slug::<EntryKey>(&entry_slug)?;
+    let file_slug = path_slug::<FileKey>(&file_slug)?;
 
     let tx = state.db.begin_write()?;
 
@@ -156,9 +159,9 @@ pub async fn file_info_page(
     State(state): State<Arc<AppState>>,
     Path((category, entry, file)): Path<(String, String, String)>,
 ) -> Result<Html<String>, AppError> {
-    let category = Slug::new(category).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
-    let entry = Slug::new(entry).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
-    let file = Slug::new(file).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let category = path_slug::<CategoryKey>(&category)?;
+    let entry = path_slug::<EntryKey>(&entry)?;
+    let file = path_slug::<FileKey>(&file)?;
     let key = (category, entry, file);
     let tx = state.db.begin_read()?;
 
@@ -187,15 +190,29 @@ pub async fn file_info_page(
         .and_then(|cookie| Signed::<Session>::parse(cookie.value(), &CONFIG.secret))
         .map(|session| session.inner.user);
 
+    let base = CONFIG.base_path();
     let page = PageContext::new()
         .insert("page_title", &key.2)
         .insert("category", &key.0)
         .insert("entry", &key.1)
         .insert("file", &key.2)
-        .insert("page_category", &key.0)
-        .insert("page_entry", &key.1)
-        .insert("page_file", &key.2)
-        .insert("page_kind", "file")
+        .insert(
+            "breadcrumbs",
+            &[
+                BreadcrumbItem {
+                    href: Some(format!("{base}/{}/README.md", key.0)),
+                    label: key.0.to_string(),
+                },
+                BreadcrumbItem {
+                    href: Some(format!("{base}/{}/{}/README.md", key.0, key.1)),
+                    label: key.1.to_string(),
+                },
+                BreadcrumbItem {
+                    href: None,
+                    label: key.2.to_string(),
+                },
+            ],
+        )
         .insert("file_editor", &file_meta.editor)
         .insert("file_date", &date)
         .insert("file_size", &size)
@@ -210,9 +227,9 @@ pub async fn file_delete(
     Path((category, entry, file)): Path<(String, String, String)>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let _username = token?;
-    let category = Slug::new(category).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
-    let entry = Slug::new(entry).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
-    let file = Slug::new(file).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let category = path_slug::<CategoryKey>(&category)?;
+    let entry = path_slug::<EntryKey>(&entry)?;
+    let file = path_slug::<FileKey>(&file)?;
     let key = (category, entry, file);
     let tx = state.db.begin_write()?;
 

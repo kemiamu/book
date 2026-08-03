@@ -1,4 +1,3 @@
-use super::{err, internal_error};
 use axum::response::{Html, IntoResponse, Redirect};
 use axum::{Json, extract::Query, extract::State, http::HeaderMap, http::StatusCode};
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
@@ -46,23 +45,23 @@ pub async fn sign_in_post(
     jar: CookieJar,
     State(state): State<Arc<AppState>>,
     Json(body): Json<SignInForm>,
-) -> Result<(CookieJar, Json<serde_json::Value>), (StatusCode, Json<serde_json::Value>)> {
+) -> Result<(CookieJar, Json<serde_json::Value>), AppError> {
     let _passkey = Signed::<Passkey>::parse(&body.passkey, &CONFIG.secret)
-        .ok_or_else(|| err(StatusCode::UNAUTHORIZED, "Invalid or expired passkey"))?;
+        .ok_or_else(|| AppError::json(StatusCode::UNAUTHORIZED, "Invalid or expired passkey"))?;
 
-    let username = Slug::new(body.username).map_err(|e| err(StatusCode::BAD_REQUEST, e))?;
+    let username =
+        Slug::new(body.username).map_err(|e| AppError::json(StatusCode::BAD_REQUEST, e))?;
 
-    let tx = state.db.begin_read().map_err(internal_error)?;
-    let table = tx.open_table(USERS).map_err(internal_error)?;
+    let tx = state.db.begin_read()?;
+    let table = tx.open_table(USERS)?;
 
     let user = table
-        .get(&username)
-        .map_err(internal_error)?
-        .ok_or_else(|| err(StatusCode::UNAUTHORIZED, "Invalid username or password"))?
+        .get(&username)?
+        .ok_or_else(|| AppError::json(StatusCode::UNAUTHORIZED, "Invalid username or password"))?
         .value();
 
     if !user.verify(&body.password, &CONFIG.secret) {
-        return Err(err(
+        return Err(AppError::json(
             StatusCode::UNAUTHORIZED,
             "Invalid username or password",
         ));
@@ -89,23 +88,27 @@ pub async fn sign_up_post(
     jar: CookieJar,
     State(state): State<Arc<AppState>>,
     Json(body): Json<SignUpForm>,
-) -> Result<(CookieJar, Json<serde_json::Value>), (StatusCode, Json<serde_json::Value>)> {
+) -> Result<(CookieJar, Json<serde_json::Value>), AppError> {
     let passkey = Signed::<Passkey>::parse(&body.passkey, &CONFIG.secret)
-        .ok_or_else(|| err(StatusCode::UNAUTHORIZED, "Invalid or expired passkey"))?;
+        .ok_or_else(|| AppError::json(StatusCode::UNAUTHORIZED, "Invalid or expired passkey"))?;
 
-    let username = Slug::new(body.username).map_err(|e| err(StatusCode::BAD_REQUEST, e))?;
+    let username =
+        Slug::new(body.username).map_err(|e| AppError::json(StatusCode::BAD_REQUEST, e))?;
 
-    let tx = state.db.begin_write().map_err(internal_error)?;
-    let mut table = tx.open_table(USERS).map_err(internal_error)?;
+    let tx = state.db.begin_write()?;
+    let mut table = tx.open_table(USERS)?;
 
-    if table.get(&username).map_err(internal_error)?.is_some() {
-        return Err(err(StatusCode::CONFLICT, "Username already exists"));
+    if table.get(&username)?.is_some() {
+        return Err(AppError::json(
+            StatusCode::CONFLICT,
+            "Username already exists",
+        ));
     }
 
     let user = User::new(&body.password, &CONFIG.secret, passkey.inner.into_creator());
-    table.insert(&username, user).map_err(internal_error)?;
+    table.insert(&username, user)?;
     drop(table);
-    tx.commit().map_err(internal_error)?;
+    tx.commit()?;
 
     let jar = set_session_cookie(jar, username, &CONFIG.secret);
     Ok((jar, Json(serde_json::json!({}))))

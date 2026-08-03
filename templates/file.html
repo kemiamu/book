@@ -1,10 +1,11 @@
+{% import "macros/_nav.html" as nav %}
 {% extends "_base.html" %}
 {% block title %}{{ file }} - {{ site_title }}{% endblock title %}
 {% block body %}
 <section class="section">
   <div class="container container-narrow">
-    <h1 class="title">{{ file }}</h1>
-    <p class="subtitle text-muted">{{ category }} / {{ entry }}</p>
+    <h1 class="title mb-0 pb-2">{{ file }}</h1>
+    {{ nav::breadcrumb(items=breadcrumbs) }}
     <hr />
     <div class="block">
       <p><span class="text-muted">Editor:</span> {{ file_editor }}</p>
@@ -18,3 +19,6 @@
   </div>
 </section>
 {% endblock body %}
+{% block footer_actions %}
+<li><a href="#" :class="confirm ? 'text-danger' : 'text-muted'" x-data="{ confirm: false }" @click.prevent="if (confirm) { deleteFile('{{ category }}', '{{ entry }}', '{{ file }}') } else { confirm = true; setTimeout(() => confirm = false, 3000) }" x-text="confirm ? 'Confirm Delete?' : 'Delete This File'">Delete This File</a></li>
+{% endblock footer_actions %}

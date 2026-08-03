@@ -10,6 +10,18 @@ fn category(name: &str) -> Slug<CategoryKey> {
 }
 
 #[test]
+fn slug_normalize() {
+    let entry = |s: &str| Slug::<EntryKey>::normalize(s);
+    assert_eq!(entry("My Entry").unwrap().as_ref(), "My-Entry");
+    assert_eq!(entry("  spaced  ").unwrap().as_ref(), "spaced");
+    assert_eq!(entry("a/b/c").unwrap().as_ref(), "a-b-c");
+    assert_eq!(entry("keep--dashes").unwrap().as_ref(), "keep--dashes");
+    assert_eq!(entry("tab\there").unwrap().as_ref(), "tab-here");
+    assert!(entry("").is_none());
+    assert!(entry("///").is_none());
+}
+
+#[test]
 fn slug_validation() {
     assert!(Slug::<EntryKey>::new("hello-world").is_ok());
     assert!(Slug::<EntryKey>::new("Hello_World-2").is_ok());

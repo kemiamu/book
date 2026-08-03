@@ -1,6 +1,7 @@
+use super::path_slug;
 use axum::{Json, extract::Query, extract::State, http::StatusCode, response::Html};
 use axum_extra::extract::cookie::CookieJar;
-use book::model::{AppState, ENTRIES, ENTRY_BODY, EntryBody, EntryMeta};
+use book::model::{AppState, CategoryKey, ENTRIES, ENTRY_BODY, EntryBody, EntryKey, EntryMeta};
 use book::model::{Markdown, PageContext, Session, Slug, UserToken};
 use book::{CONFIG, crypto::Signed, error::AppError};
 use redb::{ReadableDatabase, ReadableTable};
@@ -23,15 +24,8 @@ pub async fn edit_page(
 ) -> Result<Html<String>, AppError> {
     let (category, entry, title, body) =
         if let (Some(category), Some(entry)) = (&params.category, &params.entry) {
-            let category = Slug::new(category.clone()).map_err(|e| {
-                AppError::new(
-                    StatusCode::BAD_REQUEST,
-                    format!("invalid category slug: {e}"),
-                )
-            })?;
-            let entry = Slug::new(entry.clone()).map_err(|e| {
-                AppError::new(StatusCode::BAD_REQUEST, format!("invalid entry slug: {e}"))
-            })?;
+            let category = path_slug::<CategoryKey>(category)?;
+            let entry = path_slug::<EntryKey>(entry)?;
             let key = (category, entry);
             let tx = state.db.begin_read()?;
 
@@ -96,9 +90,8 @@ pub async fn edit_post(
 
     let username = token?;
 
-    let category =
-        Slug::new(body.category).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
-    let entry = Slug::new(body.entry).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let category = path_slug::<CategoryKey>(&body.category)?;
+    let entry = path_slug::<EntryKey>(&body.entry)?;
     let key = (category, entry);
 
     // a fresh entry can be created with just an entry slug; fall back to it

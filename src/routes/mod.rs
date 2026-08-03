@@ -1,7 +1,9 @@
 use axum::response::{Html, IntoResponse};
 use axum::{Json, extract::Path, extract::State, http::StatusCode};
 use axum_extra::extract::cookie::CookieJar;
-use book::model::{AppState, CategoryKey, ENTRIES, ENTRY_BODY, EntryKey, EntryMeta, FileKey};
+use book::model::{
+    AppState, CategoryKey, ENTRIES, ENTRY_BODY, EntryKey, EntryMeta, FileKey, SlugRule,
+};
 use book::model::{FILE_BLOB, FILES, FilePath, PageContext, Passkey, Session, Slug, UserToken};
 use book::{CONFIG, crypto::Signed, error::AppError};
 use redb::{ReadableDatabase, ReadableTable};
@@ -27,8 +29,8 @@ pub async fn entry_delete(
     Path((category, entry)): Path<(String, String)>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let _username = token?;
-    let category = Slug::new(category).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
-    let entry = Slug::new(entry).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let category = path_slug::<CategoryKey>(&category)?;
+    let entry = path_slug::<EntryKey>(&entry)?;
     let tx = state.db.begin_write()?;
 
     // collect all file keys for this entry
@@ -83,17 +85,23 @@ pub async fn entry_delete(
 //
 // ++++++++++++============++++++++++++============++++++++++++============
 
-/// create a 500 internal server error response
-fn internal_error<E: ToString>(error: E) -> (StatusCode, Json<serde_json::Value>) {
-    (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(serde_json::json!({"error": error.to_string()})),
-    )
+/// view model for a single listing row
+#[derive(serde::Serialize)]
+struct ListItem {
+    href: String,
+    title: String,
 }
 
-/// create an error response with status code
-fn err<M: ToString>(status: StatusCode, msg: M) -> (StatusCode, Json<serde_json::Value>) {
-    (status, Json(serde_json::json!({"error": msg.to_string()})))
+/// parse a path segment into a slug, normalizing disallowed characters
+fn path_slug<T: SlugRule>(raw: &str) -> Result<Slug<T>, AppError> {
+    Slug::normalize(raw).ok_or_else(|| AppError::new(StatusCode::BAD_REQUEST, "invalid slug"))
+}
+
+/// view model for a breadcrumb item; the current page has no href
+#[derive(serde::Serialize)]
+struct BreadcrumbItem {
+    href: Option<String>,
+    label: String,
 }
 
 // home
@@ -121,23 +129,19 @@ pub async fn home_page(
     entries.sort_by(|a, b| b.2.last_modified.cmp(&a.2.last_modified));
 
     let base = CONFIG.base_path();
-    let entries: Vec<serde_json::Value> = entries
+    let entries: Vec<ListItem> = entries
         .into_iter()
-        .map(|(category, entry, meta)| {
-            serde_json::json!({
-                "href": format!("{base}/{category}/{entry}/README.md"),
-                "title": meta.title,
-            })
+        .map(|(category, entry, meta)| ListItem {
+            href: format!("{base}/{category}/{entry}/README.md"),
+            title: meta.title,
         })
         .collect();
 
-    let categories: Vec<serde_json::Value> = categories
+    let categories: Vec<ListItem> = categories
         .into_iter()
-        .map(|category| {
-            serde_json::json!({
-                "href": format!("{base}/{category}/README.md"),
-                "title": category.to_string(),
-            })
+        .map(|category| ListItem {
+            href: format!("{base}/{category}/README.md"),
+            title: category.to_string(),
         })
         .collect();
 
@@ -164,7 +168,7 @@ pub async fn category_page(
     State(state): State<Arc<AppState>>,
     Path(category): Path<String>,
 ) -> Result<Html<String>, AppError> {
-    let category = Slug::new(category).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let category = path_slug::<CategoryKey>(&category)?;
     let tx = state.db.begin_read()?;
 
     let entries_table = tx.open_table(ENTRIES)?;
@@ -181,13 +185,11 @@ pub async fn category_page(
     entries.sort_by(|a, b| b.2.last_modified.cmp(&a.2.last_modified));
 
     let base = CONFIG.base_path();
-    let entries: Vec<serde_json::Value> = entries
+    let entries: Vec<ListItem> = entries
         .into_iter()
-        .map(|(category, entry, meta)| {
-            serde_json::json!({
-                "href": format!("{base}/{category}/{entry}/README.md"),
-                "title": meta.title,
-            })
+        .map(|(category, entry, meta)| ListItem {
+            href: format!("{base}/{category}/{entry}/README.md"),
+            title: meta.title,
         })
         .collect();
 
@@ -199,6 +201,13 @@ pub async fn category_page(
     let page = PageContext::new()
         .insert("page_title", &category)
         .insert("category", &category)
+        .insert(
+            "breadcrumbs",
+            &[BreadcrumbItem {
+                href: None,
+                label: category.to_string(),
+            }],
+        )
         .insert("entries", &entries)
         .insert("user", &user);
     Ok(Html(page.render("category.html")?))
@@ -214,8 +223,8 @@ pub async fn entry_page(
     State(state): State<Arc<AppState>>,
     Path((category, entry)): Path<(String, String)>,
 ) -> Result<Html<String>, AppError> {
-    let category = Slug::new(category).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
-    let entry = Slug::new(entry).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let category = path_slug::<CategoryKey>(&category)?;
+    let entry = path_slug::<EntryKey>(&entry)?;
     let key = (category, entry);
     let tx = state.db.begin_read()?;
 
@@ -257,13 +266,11 @@ pub async fn entry_page(
     }
 
     let base = CONFIG.base_path();
-    let files: Vec<serde_json::Value> = files
+    let files: Vec<ListItem> = files
         .into_iter()
-        .map(|file| {
-            serde_json::json!({
-                "href": format!("{base}/{}/{}/{}/info", key.0, key.1, file),
-                "title": file,
-            })
+        .map(|file| ListItem {
+            href: format!("{base}/{}/{}/{}/info", key.0, key.1, file),
+            title: file.to_string(),
         })
         .collect();
 
@@ -273,9 +280,19 @@ pub async fn entry_page(
         .insert("user", &user)
         .insert("category", &key.0)
         .insert("entry", &key.1)
-        .insert("page_category", &key.0)
-        .insert("page_entry", &key.1)
-        .insert("page_kind", "entry")
+        .insert(
+            "breadcrumbs",
+            &[
+                BreadcrumbItem {
+                    href: Some(format!("{base}/{}/README.md", key.0)),
+                    label: key.0.to_string(),
+                },
+                BreadcrumbItem {
+                    href: None,
+                    label: format!("{} @ {}", date, entry_meta.editor),
+                },
+            ],
+        )
         .insert("page_date", &date)
         .insert("page_editor", &entry_meta.editor)
         .insert("files", &files);
@@ -325,9 +342,9 @@ pub async fn file_download(
     State(state): State<Arc<AppState>>,
     Path((category, entry, file)): Path<(String, String, String)>,
 ) -> Result<(StatusCode, impl IntoResponse), AppError> {
-    let category = Slug::new(category).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
-    let entry = Slug::new(entry).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
-    let file = Slug::new(file).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let category = path_slug::<CategoryKey>(&category)?;
+    let entry = path_slug::<EntryKey>(&entry)?;
+    let file = path_slug::<FileKey>(&file)?;
     let key = (category, entry, file);
     let tx = state.db.begin_read()?;
 

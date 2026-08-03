@@ -398,6 +398,25 @@ impl<T: SlugRule> Slug<T> {
             .split(|ch: char| !T::is_allowed(ch))
             .filter_map(|seg| Slug::new(seg.to_string()).ok())
     }
+
+    /// convert a raw name into a valid slug, replacing runs of
+    /// disallowed characters with '-'
+    pub fn normalize(input: &str) -> Option<Slug<T>> {
+        let mut out = String::with_capacity(input.len());
+        let mut pending_dash = false;
+        for ch in input.chars() {
+            if T::is_allowed(ch) {
+                if pending_dash && !out.is_empty() {
+                    out.push('-');
+                }
+                pending_dash = false;
+                out.push(ch);
+            } else {
+                pending_dash = true;
+            }
+        }
+        Slug::new(out).ok()
+    }
 }
 
 impl<T: SlugRule> std::fmt::Display for Slug<T> {
