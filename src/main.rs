@@ -12,14 +12,6 @@ use tower_http::services::ServeDir;
 
 mod routes;
 
-/// open the database, creating and initializing tables on first run
-fn init_db<P: AsRef<Path>>(path: P) -> Option<Database> {
-    match path.as_ref().exists() {
-        true => Database::open(path).ok(),
-        false => init_tables(path).ok(),
-    }
-}
-
 /// entry point
 #[tokio::main]
 async fn main() {
@@ -44,6 +36,7 @@ async fn main() {
         .route("/upload", post(routes::file_upload_post))
         // view / download
         .route("/{entry}/README.md", get(routes::entry_page))
+        .route("/tags/{tag}/README.md", get(routes::tags_page))
         .route("/{entry}/{file}", get(routes::file_download))
         .route("/{entry}/delete", post(routes::entry_delete))
         // static files
@@ -59,4 +52,12 @@ async fn main() {
 
     tracing::info!("🚀 Server started at: {}", &CONFIG.base_url);
     axum::serve(listener, app).await.unwrap();
+}
+
+/// open the database, creating and initializing tables on first run
+fn init_db<P: AsRef<Path>>(path: P) -> Option<Database> {
+    match path.as_ref().exists() {
+        true => Database::open(path).ok(),
+        false => init_tables(path).ok(),
+    }
 }

@@ -9,6 +9,7 @@ use book::error::AppError;
 use book::model::{AppState, EntryMeta, PageContext, Passkey, Session, Slug, UserToken};
 use book::model::{ENTRIES, ENTRY_BODY, FILE_BLOB, FILES};
 use redb::{ReadableDatabase, ReadableTable};
+use std::collections::HashSet;
 use std::sync::Arc;
 use time::OffsetDateTime;
 use time::format_description::well_known::Iso8601;
@@ -110,9 +111,73 @@ pub async fn home_page(
 
     let entries_table = tx.open_table(ENTRIES)?;
     let mut entries: Vec<(String, EntryMeta)> = Vec::new();
+    let mut tag_set: HashSet<String> = HashSet::new();
     for result in entries_table.iter()? {
         let (key, value) = result?;
-        entries.push((key.value().to_string(), value.value()));
+        let meta = value.value();
+        for tag in &meta.tags {
+            tag_set.insert(tag.to_string());
+        }
+        entries.push((key.value().to_string(), meta));
+    }
+
+    // most recently updated first
+    entries.sort_by(|a, b| b.1.last_modified.cmp(&a.1.last_modified));
+
+    let mapped = entries.into_iter().map(|(name, meta)| {
+        serde_json::json!({
+            "href": format!("/{name}/README.md"),
+            "title": meta.title,
+        })
+    });
+    let entries: Vec<serde_json::Value> = mapped.collect();
+
+    let mut tags: Vec<String> = tag_set.into_iter().collect();
+    tags.sort();
+    let tags: Vec<serde_json::Value> = tags
+        .into_iter()
+        .map(|tag| {
+            serde_json::json!({
+                "href": format!("/tags/{tag}/README.md"),
+                "title": tag,
+            })
+        })
+        .collect();
+
+    let user = jar
+        .get("session")
+        .and_then(|cookie| Signed::<Session>::parse(cookie.value(), &CONFIG.secret))
+        .map(|session| session.inner.user);
+
+    let page = PageContext::new()
+        .insert("page_title", "Home")
+        .insert("entries", &entries)
+        .insert("tags", &tags)
+        .insert("user", &user);
+    Ok(Html(page.render("home.html")?))
+}
+
+// tags
+//
+// ++++++++++++============++++++++++++============++++++++++++============
+
+/// show entries filtered by a tag
+pub async fn tags_page(
+    jar: CookieJar,
+    State(state): State<Arc<AppState>>,
+    Path(tag): Path<String>,
+) -> Result<Html<String>, AppError> {
+    let tag = Slug::new(tag).map_err(|e| AppError::new(StatusCode::BAD_REQUEST, e))?;
+    let tx = state.db.begin_read()?;
+
+    let entries_table = tx.open_table(ENTRIES)?;
+    let mut entries: Vec<(String, EntryMeta)> = Vec::new();
+    for result in entries_table.iter()? {
+        let (key, value) = result?;
+        let meta = value.value();
+        if meta.tags.contains(&tag) {
+            entries.push((key.value().to_string(), meta));
+        }
     }
 
     // most recently updated first
@@ -132,10 +197,11 @@ pub async fn home_page(
         .map(|session| session.inner.user);
 
     let page = PageContext::new()
-        .insert("page_title", "Home")
+        .insert("page_title", &tag)
+        .insert("tag", &tag)
         .insert("entries", &entries)
         .insert("user", &user);
-    Ok(Html(page.render("home.html")?))
+    Ok(Html(page.render("tags.html")?))
 }
 
 // view

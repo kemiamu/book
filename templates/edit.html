@@ -88,7 +88,7 @@ function editApp() {
       </div>
       {% else %}
       {{ form::input(label="Title", id="title", model="title", required=true, placeholder="Page title") }}
-      {{ form::input(label="Tags (comma separated)", id="tags", model="tags", placeholder="tag1, tag2, ...") }}
+      {{ form::input(label="Tags (comma separated)", id="tags", model="tags", required=false, placeholder="tag1, tag2") }}
       {{ form::textarea(label="Body (Markdown)", id="body", model="body", placeholder="Write content in Markdown...") }}
       {% endif %}
       {% if slug | length > 0 %}
