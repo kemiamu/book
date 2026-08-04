@@ -1,7 +1,7 @@
 {% import "macros/_nav.html" as nav %}
-{% extends "_base.html" %}
+{% extends "layout/_layout.html" %}
 {% block title %}{{ category }} - {{ site_title }}{% endblock title %}
-{% block body %}
+{% block content %}
 <section class="section">
   <div class="container container-narrow">
     {{ nav::page_header(title=page_title, breadcrumbs=breadcrumbs, actions=page_actions) }}
@@ -21,4 +21,4 @@
     {% endif %}
   </div>
 </section>
-{% endblock body %}
+{% endblock content %}

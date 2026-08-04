@@ -1,0 +1,38 @@
+{% import "macros/_nav.html" as nav %}
+{% extends "layout/_base.html" %}
+{% block body %}
+<main>{% block content %}{% endblock content %}</main>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <p class="title">{{ site_title }}</p>
+        <p class="text-muted">A rather humble documentation site.</p>
+      </div>
+      <div class="footer-links">
+        <p class="title">Links</p>
+        <ul>
+          <li><a href="{{ base_path }}/" class="text-muted">Home</a></li>
+          {% if user %}
+          <li><a href="{{ base_path }}/edit" class="text-muted">New Entry</a></li>
+          <li><a href="{{ base_path }}/profile" class="text-muted">Profile</a></li>
+          {{ nav::confirm_link(
+            label="Sign Out", href=base_path ~ "/auth/sign-out",
+            confirm_label="Confirm Sign Out?"
+          ) }}
+          {% block footer_actions %}{% endblock footer_actions %}
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+    <hr />
+    <div class="footer-bottom">
+      <p class="text-faint">
+        &copy; 2026 by Contributors 🥥 &mdash; licensed under
+        <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>
+      </p>
+    </div>
+  </div>
+</footer>
+{% endblock body %}

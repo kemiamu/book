@@ -1,6 +1,6 @@
 {% import "macros/_form.html" as form %}
 {% import "macros/_notification.html" as notify %}
-{% extends "_base.html" %}
+{% extends "layout/_layout.html" %}
 {% block title %}Edit - {{ site_title }}{% endblock title %}
 {% block head %}
 <script defer>
@@ -62,7 +62,7 @@ function editApp() {
 }
 </script>
 {% endblock head %}
-{% block body %}
+{% block content %}
 <section class="section">
   <div class="container container-narrow">
     <h1 class="title">{% if entry | length > 0 %}Edit Entry{% else %}New Entry{% endif %}</h1>
@@ -128,4 +128,4 @@ function editApp() {
     </form>
   </div>
 </section>
-{% endblock body %}
+{% endblock content %}

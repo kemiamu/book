@@ -1,4 +1,3 @@
-{% import "macros/_nav.html" as nav %}
 <!doctype html>
 <html lang="en" x-data="theme()" :data-theme="dark ? 'dark' : 'light'">
   <head>
@@ -10,7 +9,7 @@
     <meta name="description" content="A rather humble documentation site." />
     <link rel="icon" type="image/x-icon" href="{{ base_url }}/img/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ base_url }}/img/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ base_url }}/img/favicon-16x16.png">
+   </title> <link rel="icon" type="image/png" sizes="16x16" href="{{ base_url }}/img/favicon-16x16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ base_url }}/img/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="192x192"
           href="{{ base_url }}/img/android-chrome-192x192.png">
@@ -34,39 +33,6 @@
     {% include "macros/_scripts.html" %}
   </head>
   <body>
-    <main>{% block body %}{% endblock body %}</main>
-
-    <footer class="footer">
-      <div class="container">
-        <div class="footer-grid">
-          <div>
-            <p class="title">{{ site_title }}</p>
-            <p class="text-muted">A rather humble documentation site.</p>
-          </div>
-          <div class="footer-links">
-            <p class="title">Links</p>
-            <ul>
-              <li><a href="{{ base_path }}/" class="text-muted">Home</a></li>
-              {% if user %}
-              <li><a href="{{ base_path }}/edit" class="text-muted">New Entry</a></li>
-              <li><a href="{{ base_path }}/profile" class="text-muted">Profile</a></li>
-              {{ nav::confirm_link(
-                label="Sign Out", href=base_path ~ "/auth/sign-out",
-                confirm_label="Confirm Sign Out?"
-              ) }}
-              {% endif %}
-              {% block footer_actions %}{% endblock footer_actions %}
-            </ul>
-          </div>
-        </div>
-        <hr />
-        <div class="footer-bottom">
-          <p class="text-faint">
-            &copy; 2026 by Contributors 🥥 &mdash; licensed under
-            <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>
-          </p>
-        </div>
-      </div>
-    </footer>
+    {% block body %}{% endblock body %}
   </body>
 </html>

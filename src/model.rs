@@ -1,3 +1,5 @@
+//! canonical definitions of the application's fundamental data formats
+
 use crate::{crypto::Mac, crypto::Signable, crypto::Signed, error::AppError, html::HtmlWriter};
 use axum::{extract::FromRequestParts, http::StatusCode, http::request::Parts};
 use axum_extra::extract::cookie::CookieJar;
