@@ -47,6 +47,7 @@ async fn main() {
         .nest_service("/img", ServeDir::new("public/img"))
         .nest_service("/css", ServeDir::new("public/css"))
         .nest_service("/js", ServeDir::new("public/js"))
+        .nest_service("/fonts", ServeDir::new("public/fonts"))
         .fallback_service(ServeDir::new(&CONFIG.site_root));
 
     let app = app
