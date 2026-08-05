@@ -19,13 +19,13 @@ pub const ENTRY_BODY: Table<EntryId, Markdown<'static>> = Table::new("entry_body
 /// singleton counter that allocates entry ids
 pub const ENTRY_COUNTER: Table<(), u64> = Table::new("entry_counter");
 
-/// files table definition, keyed by (entry id, file slug)
-pub const FILES: Table<(EntryId, Slug<FileKey>), FileMeta> = Table::new("files");
+/// files table definition, keyed by (entry id, file name)
+pub const FILES: Table<(EntryId, Slug<FileName>), FileMeta> = Table::new("files");
 /// file blob table definition, borrowed slices for zero-copy reads
-pub const FILE_BLOB: Table<(EntryId, Slug<FileKey>), &[u8]> = Table::new("file_blob");
+pub const FILE_BLOB: Table<(EntryId, Slug<FileName>), &[u8]> = Table::new("file_blob");
 
 /// users table definition
-pub const USERS: Table<Slug<UserKey>, User> = Table::new("users");
+pub const USERS: Table<Slug<UserName>, User> = Table::new("users");
 
 /// application state
 pub struct AppState {
@@ -130,16 +130,11 @@ mod key {
 
     impl<T: SlugRule> Slug<T> {
         /// validate and create a new slug
-        pub fn new<V: Into<Cow<'static, str>>>(value: V) -> Result<Self, &'static str> {
+        pub fn new<V: Into<Cow<'static, str>>>(value: V) -> Option<Self> {
             let cow = value.into();
-            if cow.is_empty() {
-                Err("slug must not be empty")
-            } else if cow.len() > T::MAX_LEN {
-                Err("slug exceeds the max length")
-            } else if !cow.chars().all(T::is_allowed) {
-                Err("slug contains disallowed characters")
-            } else {
-                Ok(Self(cow, PhantomData))
+            match cow.is_empty() || cow.len() > T::MAX_LEN || !cow.chars().all(T::is_allowed) {
+                true => None,
+                false => Some(Self(cow, PhantomData)),
             }
         }
 
@@ -147,7 +142,7 @@ mod key {
         pub fn split(input: &str) -> impl Iterator<Item = Slug<T>> {
             input
                 .split(|ch: char| !T::is_allowed(ch))
-                .filter_map(|seg| Slug::new(seg.to_string()).ok())
+                .filter_map(|seg| Slug::new(seg.to_owned()))
         }
 
         /// convert a raw name into a valid slug, replacing runs of
@@ -159,7 +154,7 @@ mod key {
                 out.push('-');
                 out.push_str(part.as_ref());
             }
-            Slug::new(out).ok()
+            Slug::new(out)
         }
     }
 
@@ -202,8 +197,8 @@ mod key {
         };
     }
 
-    slug_key!(FileKey, 255, '-' | '_' | '.');
-    slug_key!(UserKey, 32, '-' | '_');
+    slug_key!(FileName, 255, '-' | '_' | '.');
+    slug_key!(UserName, 32, '-' | '_');
 }
 
 // resource types
@@ -211,20 +206,20 @@ mod key {
 // ++++++++++++============++++++++++++============++++++++++++============
 
 mod resource {
-    use super::key::{Slug, UserKey};
+    use super::key::{Slug, UserName};
     use crate::html::HtmlWriter;
     use std::borrow::Cow;
 
     /// file metadata
     #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
     pub struct FileMeta {
-        pub editor: Slug<UserKey>,
+        pub editor: Slug<UserName>,
         pub last_modified: i64,
     }
 
     impl FileMeta {
         /// create new resource metadata with current timestamp
-        pub fn new<E: Into<Slug<UserKey>>>(editor: E) -> Self {
+        pub fn new<E: Into<Slug<UserName>>>(editor: E) -> Self {
             Self {
                 editor: editor.into(),
                 last_modified: time::UtcDateTime::now().unix_timestamp(),
@@ -237,14 +232,14 @@ mod resource {
     pub struct EntryMeta {
         pub title: String,
         pub category: String,
-        pub editor: Slug<UserKey>,
+        pub editor: Slug<UserName>,
         pub created_at: i64,
         pub last_modified: i64,
     }
 
     impl EntryMeta {
         /// create new entry metadata
-        pub fn new<T: Into<String>, C: Into<String>, E: Into<Slug<UserKey>>>(
+        pub fn new<T: Into<String>, C: Into<String>, E: Into<Slug<UserName>>>(
             title: T,
             category: C,
             editor: E,
@@ -260,7 +255,7 @@ mod resource {
         }
 
         /// update metadata, preserving the creation time
-        pub fn update<T: Into<String>, C: Into<String>, E: Into<Slug<UserKey>>>(
+        pub fn update<T: Into<String>, C: Into<String>, E: Into<Slug<UserName>>>(
             &self,
             title: T,
             category: C,
@@ -327,7 +322,7 @@ mod resource {
 // ++++++++++++============++++++++++++============++++++++++++============
 
 mod auth {
-    use super::key::{Slug, UserKey};
+    use super::key::{Slug, UserName};
     use crate::{crypto::Mac, crypto::Signable, crypto::Signed, error::AppError};
     use axum::{extract::FromRequestParts, http::StatusCode, http::request::Parts};
     use axum_extra::extract::cookie::CookieJar;
@@ -336,7 +331,7 @@ mod auth {
     #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
     pub struct User {
         password: Mac,
-        pub parent: Option<Slug<UserKey>>,
+        pub parent: Option<Slug<UserName>>,
     }
 
     impl User {
@@ -346,7 +341,7 @@ mod auth {
         pub fn new<P: AsRef<[u8]>, S: AsRef<[u8]>>(
             password: P,
             secret: S,
-            parent: Option<Slug<UserKey>>,
+            parent: Option<Slug<UserName>>,
         ) -> Self {
             let password = Mac::new(password, secret, Self::PASSWD_TAG);
             Self { password, parent }
@@ -362,7 +357,7 @@ mod auth {
     /// authorization passkey token
     #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
     pub struct Passkey {
-        creator: Option<Slug<UserKey>>,
+        creator: Option<Slug<UserName>>,
         expires_at: i64,
     }
 
@@ -371,7 +366,7 @@ mod auth {
         const BOOTSTRAP_EXPIRY_SECS: i64 = 24 * 60 * 60;
 
         /// create an invitation passkey for a known user
-        pub fn new<C: Into<Slug<UserKey>>>(creator: C) -> Self {
+        pub fn new<C: Into<Slug<UserName>>>(creator: C) -> Self {
             let now = time::UtcDateTime::now().unix_timestamp();
             Self {
                 creator: Some(creator.into()),
@@ -389,12 +384,12 @@ mod auth {
         }
 
         /// the inviting user, if this is an invitation passkey
-        pub fn creator(&self) -> Option<&Slug<UserKey>> {
+        pub fn creator(&self) -> Option<&Slug<UserName>> {
             self.creator.as_ref()
         }
 
         /// consume the passkey, returning its creator
-        pub fn into_creator(self) -> Option<Slug<UserKey>> {
+        pub fn into_creator(self) -> Option<Slug<UserName>> {
             self.creator
         }
 
@@ -426,7 +421,7 @@ mod auth {
     /// user session token
     #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
     pub struct Session {
-        pub user: Slug<UserKey>,
+        pub user: Slug<UserName>,
         pub expires_at: i64,
     }
 
@@ -434,7 +429,7 @@ mod auth {
         pub const EXPIRY_SECS: i64 = 3650 * 24 * 60 * 60;
 
         /// create a new session
-        pub fn new<U: Into<Slug<UserKey>>>(user: U) -> Self {
+        pub fn new<U: Into<Slug<UserName>>>(user: U) -> Self {
             let now = time::UtcDateTime::now().unix_timestamp();
             Self {
                 user: user.into(),
@@ -464,7 +459,7 @@ mod auth {
 
     /// authenticated user extracted from session cookie
     #[derive(Debug)]
-    pub struct UserToken(pub Result<Slug<UserKey>, AppError>);
+    pub struct UserToken(pub Result<Slug<UserName>, AppError>);
 
     impl<S: Send + Sync + 'static> FromRequestParts<S> for UserToken {
         type Rejection = std::convert::Infallible;
@@ -501,7 +496,7 @@ mod auth {
 
 mod store {
     use super::auth::User;
-    use super::key::{EntryId, FileKey, Slug, UserKey};
+    use super::key::{EntryId, FileName, Slug, UserName};
     use super::resource::{EntryMeta, FileMeta, Markdown};
 
     /// implement redb::Value via postcard for a serde type.
@@ -552,8 +547,8 @@ mod store {
     impl_stored!(User);
     impl_stored!(Markdown<'static>, Markdown<'a>, "Markdown");
     impl_stored!(EntryId);
-    impl_stored!(Slug<FileKey>);
-    impl_stored!(Slug<UserKey>);
+    impl_stored!(Slug<FileName>);
+    impl_stored!(Slug<UserName>);
 
     /// implement redb::Key from raw utf8 bytes, so byte order matches
     /// string order (the same encoding redb uses for `str` keys)
@@ -569,6 +564,6 @@ mod store {
     }
 
     impl_key!(EntryId);
-    impl_key!(Slug<FileKey>);
-    impl_key!(Slug<UserKey>);
+    impl_key!(Slug<FileName>);
+    impl_key!(Slug<UserName>);
 }
