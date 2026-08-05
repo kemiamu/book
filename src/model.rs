@@ -3,23 +3,20 @@
 use crate::{crypto::Mac, crypto::Signable, crypto::Signed, error::AppError, html::HtmlWriter};
 use axum::{extract::FromRequestParts, http::StatusCode, http::request::Parts};
 use axum_extra::extract::cookie::CookieJar;
-use redb::TableDefinition as Table;
+use redb::{ReadableTable, TableDefinition as Table};
 use std::{borrow::Cow, marker::PhantomData, path::Path};
 
-/// entry key: (category, entry)
-pub type EntryPath = (Slug<CategoryKey>, Slug<EntryKey>);
-/// file key: (category, entry, file)
-pub type FilePath = (Slug<CategoryKey>, Slug<EntryKey>, Slug<FileKey>);
+/// entries table definition, keyed by hex entry id
+pub const ENTRIES: Table<EntryId, EntryMeta> = Table::new("entries");
+/// entry body table definition, markdown with its rendered html cache
+pub const ENTRY_BODY: Table<EntryId, Markdown<'static>> = Table::new("entry_body");
+/// singleton counter that allocates entry ids
+pub const ENTRY_COUNTER: Table<(), u64> = Table::new("entry_counter");
 
-/// entries table definition, keyed by (category, entry)
-pub const ENTRIES: Table<EntryPath, EntryMeta> = Table::new("entries");
-/// entry body table definition (raw markdown + rendered html)
-pub const ENTRY_BODY: Table<EntryPath, EntryBody> = Table::new("entry_body");
-
-/// files table definition, keyed by (category, entry, file)
-pub const FILES: Table<FilePath, FileMeta> = Table::new("files");
-/// file blob table definition
-pub const FILE_BLOB: Table<FilePath, Vec<u8>> = Table::new("file_blob");
+/// files table definition, keyed by (entry id, file slug)
+pub const FILES: Table<(EntryId, Slug<FileKey>), FileMeta> = Table::new("files");
+/// file blob table definition, borrowed slices for zero-copy reads
+pub const FILE_BLOB: Table<(EntryId, Slug<FileKey>), &[u8]> = Table::new("file_blob");
 
 /// users table definition
 pub const USERS: Table<Slug<UserKey>, User> = Table::new("users");
@@ -38,6 +35,7 @@ pub fn init_tables<P: AsRef<Path>>(path: P) -> Result<redb::Database, redb::Erro
     tx.open_table(FILES)?;
     tx.open_table(FILE_BLOB)?;
     tx.open_table(USERS)?;
+    tx.open_table(ENTRY_COUNTER)?;
     tx.commit()?;
 
     let base_url = &crate::CONFIG.base_url;
@@ -45,6 +43,14 @@ pub fn init_tables<P: AsRef<Path>>(path: P) -> Result<redb::Database, redb::Erro
     tracing::info!("Bootstrap passkey: {base_url}/auth?passkey={passkey}");
 
     Ok(db)
+}
+
+/// allocate the next entry id from the singleton counter
+pub fn next_entry_id(tx: &mut redb::WriteTransaction) -> Result<EntryId, redb::Error> {
+    let mut table = tx.open_table(ENTRY_COUNTER)?;
+    let next = table.get(())?.map_or(1, |n| n.value() + 1);
+    table.insert(&(), next)?;
+    Ok(EntryId::from(next))
 }
 
 // context
@@ -101,6 +107,7 @@ impl FileMeta {
 /// metadata for entries
 pub struct EntryMeta {
     pub title: String,
+    pub category: String,
     pub editor: Slug<UserKey>,
     pub created_at: i64,
     pub last_modified: i64,
@@ -108,10 +115,15 @@ pub struct EntryMeta {
 
 impl EntryMeta {
     /// create new entry metadata
-    pub fn new<T: Into<String>, E: Into<Slug<UserKey>>>(title: T, editor: E) -> Self {
+    pub fn new<T: Into<String>, C: Into<Slug<CategoryKey>>, E: Into<Slug<UserKey>>>(
+        title: T,
+        category: C,
+        editor: E,
+    ) -> Self {
         let now = time::UtcDateTime::now().unix_timestamp();
         Self {
             title: title.into(),
+            category: category.into().to_string(),
             editor: editor.into(),
             created_at: now,
             last_modified: now,
@@ -119,9 +131,15 @@ impl EntryMeta {
     }
 
     /// update metadata, preserving the creation time
-    pub fn update<T: Into<String>, E: Into<Slug<UserKey>>>(&self, title: T, editor: E) -> Self {
+    pub fn update<T: Into<String>, C: Into<Slug<CategoryKey>>, E: Into<Slug<UserKey>>>(
+        &self,
+        title: T,
+        category: C,
+        editor: E,
+    ) -> Self {
         Self {
             title: title.into(),
+            category: category.into().to_string(),
             editor: editor.into(),
             created_at: self.created_at,
             last_modified: time::UtcDateTime::now().unix_timestamp(),
@@ -129,44 +147,38 @@ impl EntryMeta {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-#[repr(transparent)]
-/// markdown content wrapper
-pub struct Markdown(String);
+#[derive(serde::Serialize, Debug, Clone)]
+/// markdown content with its rendered html cache
+pub struct Markdown<'a> {
+    raw: Cow<'a, str>,
+    html: Cow<'a, str>,
+}
 
-impl Markdown {
-    /// create markdown from string
-    pub fn new<C: Into<String>>(content: C) -> Self {
-        Self(content.into())
+impl<'a> Markdown<'a> {
+    /// create markdown from string, rendering the html cache immediately
+    pub fn new<C: Into<Cow<'a, str>>>(content: C) -> Self {
+        let raw = content.into();
+        let html = Cow::Owned(Self::render(&raw));
+        Self { raw, html }
     }
 
-    /// get the raw markdown text
-    pub fn into_inner(self) -> String {
-        self.0
+    /// borrow the raw markdown text
+    pub fn raw(&self) -> &str {
+        &self.raw
+    }
+
+    /// borrow the rendered html
+    pub fn html(&self) -> &str {
+        &self.html
     }
 
     /// render markdown to html
-    pub fn render(&self) -> String {
-        use pulldown_cmark as markdown;
-        let parser = markdown::Parser::new_ext(&self.0, markdown::Options::all());
+    fn render(raw: &str) -> String {
+        use pulldown_cmark::{Options, Parser};
+        let parser = Parser::new_ext(raw, Options::all());
         let mut html_output: String = Default::default();
         HtmlWriter::new(parser, &mut html_output).run().unwrap();
         html_output
-    }
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-/// entry content: raw markdown plus its rendered html
-pub struct EntryBody {
-    pub raw: Markdown,
-    pub html: String,
-}
-
-impl EntryBody {
-    /// render a new body from markdown
-    pub fn new(raw: Markdown) -> Self {
-        let html = raw.render();
-        Self { raw, html }
     }
 }
 
@@ -339,6 +351,56 @@ impl<S: Send + Sync + 'static> FromRequestParts<S> for UserToken {
     }
 }
 
+// entry id
+//
+// ++++++++++++============++++++++++++============++++++++++++============
+
+/// hex-encoded entry id, allocated from the singleton entry counter
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize)]
+#[serde(transparent)]
+#[repr(transparent)]
+pub struct EntryId(String);
+
+impl EntryId {
+    /// construct from raw bytes without validation (key decoder)
+    fn from_raw(data: &[u8]) -> Self {
+        Self(String::from_utf8_lossy(data).into_owned())
+    }
+}
+
+impl From<u64> for EntryId {
+    /// format a counter value as lowercase hex
+    fn from(counter: u64) -> Self {
+        Self(format!("{counter:x}"))
+    }
+}
+
+impl std::str::FromStr for EntryId {
+    type Err = &'static str;
+
+    /// parse a hex id from a path segment, normalized to lowercase
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.is_empty() || s.len() > 16 || !s.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return Err("entry id must be 1-16 hex digits");
+        }
+        Ok(Self(s.to_ascii_lowercase()))
+    }
+}
+
+impl std::fmt::Display for EntryId {
+    /// format as plain hex string
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl AsRef<str> for EntryId {
+    /// borrow the underlying hex string
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
 // slug
 //
 // ++++++++++++============++++++++++++============++++++++++++============
@@ -369,7 +431,6 @@ macro_rules! slug_key {
 }
 
 slug_key!(CategoryKey, 255, '-' | '_');
-slug_key!(EntryKey, 255, '-' | '_');
 slug_key!(FileKey, 255, '-' | '_' | '.');
 slug_key!(UserKey, 32, '-' | '_');
 
@@ -392,6 +453,14 @@ impl<T: SlugRule> Slug<T> {
         } else {
             Ok(Self(cow, PhantomData))
         }
+    }
+
+    /// construct from raw bytes without validation (key decoder)
+    fn from_raw(data: &[u8]) -> Self {
+        Self(
+            Cow::Owned(String::from_utf8_lossy(data).into_owned()),
+            PhantomData,
+        )
     }
 
     /// split a string on disallowed characters into valid slugs
@@ -487,9 +556,43 @@ macro_rules! impl_stored {
     };
 }
 
-/// implement redb::Key by raw byte comparison
+/// implement redb::Value + Key with raw utf8 bytes, so byte order matches
+/// string order (the same encoding redb uses for `str` keys)
 macro_rules! impl_key {
     ($ty:ty) => {
+        impl redb::Value for $ty {
+            type SelfType<'a>
+                = $ty
+            where
+                Self: 'a;
+            type AsBytes<'a>
+                = &'a [u8]
+            where
+                Self: 'a;
+
+            fn type_name() -> redb::TypeName {
+                redb::TypeName::new(stringify!($ty))
+            }
+
+            fn fixed_width() -> Option<usize> {
+                None
+            }
+
+            fn from_bytes<'a>(data: &'a [u8]) -> Self::SelfType<'a>
+            where
+                Self: 'a,
+            {
+                <$ty>::from_raw(data)
+            }
+
+            fn as_bytes<'a, 'b: 'a>(value: &'a Self::SelfType<'b>) -> Self::AsBytes<'a>
+            where
+                Self: 'b,
+            {
+                value.as_ref().as_bytes()
+            }
+        }
+
         impl redb::Key for $ty {
             /// keys are ordered by raw bytes, same as `str`
             fn compare(a: &[u8], b: &[u8]) -> std::cmp::Ordering {
@@ -501,15 +604,55 @@ macro_rules! impl_key {
 
 impl_stored!(FileMeta);
 impl_stored!(EntryMeta);
-impl_stored!(Markdown);
-impl_stored!(EntryBody);
 impl_stored!(User);
-impl_stored!(Slug<CategoryKey>);
-impl_stored!(Slug<EntryKey>);
-impl_stored!(Slug<FileKey>);
-impl_stored!(Slug<UserKey>);
+
+/// value layout: u32 LE raw length, raw utf8, html utf8 (the rest)
+impl redb::Value for Markdown<'static> {
+    type SelfType<'a>
+        = Markdown<'a>
+    where
+        Self: 'a;
+    type AsBytes<'a>
+        = Vec<u8>
+    where
+        Self: 'a;
+
+    fn type_name() -> redb::TypeName {
+        redb::TypeName::new("Markdown")
+    }
+
+    fn fixed_width() -> Option<usize> {
+        None
+    }
+
+    fn from_bytes<'a>(data: &'a [u8]) -> Self::SelfType<'a>
+    where
+        Self: 'a,
+    {
+        let raw_len = u32::from_le_bytes(data[..4].try_into().unwrap()) as usize;
+        let raw = std::str::from_utf8(&data[4..4 + raw_len]).unwrap();
+        let html = std::str::from_utf8(&data[4 + raw_len..]).unwrap();
+        Markdown {
+            raw: Cow::Borrowed(raw),
+            html: Cow::Borrowed(html),
+        }
+    }
+
+    fn as_bytes<'a, 'b: 'a>(value: &'a Self::SelfType<'b>) -> Self::AsBytes<'a>
+    where
+        Self: 'b,
+    {
+        let raw = value.raw.as_bytes();
+        let html = value.html.as_bytes();
+        let mut out = Vec::with_capacity(4 + raw.len() + html.len());
+        out.extend_from_slice(&(raw.len() as u32).to_le_bytes());
+        out.extend_from_slice(raw);
+        out.extend_from_slice(html);
+        out
+    }
+}
 
 impl_key!(Slug<CategoryKey>);
-impl_key!(Slug<EntryKey>);
 impl_key!(Slug<FileKey>);
 impl_key!(Slug<UserKey>);
+impl_key!(EntryId);
