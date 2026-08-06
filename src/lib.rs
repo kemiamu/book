@@ -101,6 +101,7 @@ pub mod config {
         pub base_url: String,
         pub site_title: String,
         pub secret: String,
+        pub copyright: String,
     }
 
     impl Config {

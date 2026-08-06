@@ -73,6 +73,7 @@ impl PageContext {
         ctx.insert("site_title", &crate::CONFIG.site_title);
         ctx.insert("base_url", &crate::CONFIG.base_url);
         ctx.insert("base_path", &crate::CONFIG.base_path());
+        ctx.insert("copyright", &crate::CONFIG.copyright);
         Self(ctx)
     }
 
