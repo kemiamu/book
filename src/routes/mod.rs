@@ -10,10 +10,12 @@ use time::{OffsetDateTime, format_description::well_known::Iso8601};
 
 mod auth;
 mod edit;
+mod export;
 mod upload;
 
 pub use auth::*;
 pub use edit::*;
+pub use export::*;
 pub use upload::*;
 
 // home
@@ -50,9 +52,12 @@ pub async fn home_page(
         .collect();
     let categories: Vec<ListItem> = categories
         .into_iter()
-        .map(|category| ListItem {
-            href: format!("{base}/category?name={}", encode_query(&category)),
-            title: category,
+        .map(|category| {
+            let query = encode_query(&category);
+            ListItem {
+                href: format!("{base}/category?name={query}"),
+                title: display_category(&category).to_string(),
+            }
         })
         .collect();
 
@@ -126,9 +131,10 @@ async fn render_entry_page(
 
     // the breadcrumb shows when the entry was created
     let date = format_date(meta.created_at);
+    let editor = meta.editor.to_string();
     let breadcrumbs = [BreadcrumbItem {
         href: None,
-        label: format!("{date} @ {}", meta.editor),
+        label: format!("{date} @ {editor}"),
     }];
     let page_actions = [
         HeaderAction {
@@ -198,13 +204,14 @@ async fn render_category_page(
         })
         .collect();
 
+    let display = display_category(category);
     let breadcrumbs = [BreadcrumbItem {
         href: None,
-        label: category.to_string(),
+        label: display.to_string(),
     }];
     let page = PageContext::new()
-        .insert("page_title", &format!("Category: {category}"))
-        .insert("category", &category)
+        .insert("page_title", &format!("Category: {display}"))
+        .insert("category", &display)
         .insert("breadcrumbs", &breadcrumbs)
         .insert("page_actions", &Vec::<HeaderAction>::new())
         .insert("entries", &entries)
@@ -288,7 +295,8 @@ pub async fn entry_delete(
 
     tx.commit()?;
 
-    let redirect = serde_json::json!({"redirect": format!("{}/", CONFIG.base_path())});
+    let base = CONFIG.base_path();
+    let redirect = serde_json::json!({ "redirect": format!("{base}/") });
     Ok(Json(redirect))
 }
 
@@ -376,6 +384,15 @@ fn format_date(timestamp: i64) -> String {
         .ok()
         .and_then(|date| date.format(&Iso8601::DATE).ok())
         .unwrap_or_default()
+}
+
+/// display name for a category, folding the empty value into a meaningful label
+fn display_category(category: &str) -> &str {
+    if category.is_empty() {
+        "Uncategorized"
+    } else {
+        category
+    }
 }
 
 /// parse a path segment as a hex entry id

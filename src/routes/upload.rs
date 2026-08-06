@@ -1,5 +1,6 @@
 use super::{
-    BreadcrumbItem, HeaderAction, format_date, parse_entry_id, parse_file_slug, session_user,
+    BreadcrumbItem, HeaderAction, display_category, format_date, parse_entry_id, parse_file_slug,
+    session_user,
 };
 use axum::extract::multipart::Field;
 use axum::http::StatusCode;
@@ -40,7 +41,7 @@ pub async fn file_upload_page(
         .insert("page_title", "Upload File")
         .insert("user", &session_user(&jar))
         .insert("entry_id", &entry_id)
-        .insert("category", &meta.category)
+        .insert("category", &display_category(&meta.category))
         .insert("entry_title", &meta.title);
     Ok(Html(page.render("upload.html")?).into_response())
 }

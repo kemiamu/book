@@ -36,6 +36,8 @@ async fn main() {
         .route("/{entry_id}/file/{file}", get(routes::file_download))
         .route("/{entry_id}/info/{file}", get(routes::file_info_page))
         .route("/{entry_id}/delete/{file}", post(routes::file_delete))
+        // site export
+        .route("/export", get(routes::export_zip))
         // everything else falls through to static files
         .fallback_service(ServeDir::new(&CONFIG.site_root));
 
@@ -44,7 +46,8 @@ async fn main() {
         .layer(CompressionLayer::new().zstd(true).gzip(true).deflate(true))
         .with_state(Arc::new(AppState { db }));
 
-    tracing::info!("🚀 Server started at: {}", &CONFIG.base_url);
+    let base_url = CONFIG.base_url.as_str();
+    tracing::info!("🚀 Server started at: {base_url}");
     axum::serve(listener, app).await.unwrap();
 }
 

@@ -103,19 +103,26 @@ where
             }) => {
                 write!(self.writer, "<{level}")?;
                 if let Some(id) = id {
-                    write!(self.writer, " id=\"{}\"", encode_safe(&id))?;
+                    let id = encode_safe(&id);
+                    write!(self.writer, " id=\"{id}\"")?;
                 }
                 let mut class_iter = classes.iter();
                 if let Some(class) = class_iter.next() {
-                    write!(self.writer, " class=\"{}\"", encode_safe(class))?;
+                    let class = encode_safe(class);
+                    write!(self.writer, " class=\"{class}\"")?;
                     for class in class_iter {
-                        write!(self.writer, " {}", encode_safe(class))?;
+                        let class = encode_safe(class);
+                        write!(self.writer, " {class}")?;
                     }
                 }
                 for (attr, value) in attrs {
-                    write!(self.writer, " {}", encode_safe(&attr))?;
+                    let attr = encode_safe(&attr);
+                    write!(self.writer, " {attr}")?;
                     match value {
-                        Some(val) => write!(self.writer, "=\"{}\"", encode_safe(&val))?,
+                        Some(val) => {
+                            let val = encode_safe(&val);
+                            write!(self.writer, "=\"{val}\"")?;
+                        }
                         None => write!(self.writer, "=\"\"")?,
                     }
                 }
@@ -194,11 +201,8 @@ where
                 if lang.is_empty() {
                     self.write_str("<pre><code>")?;
                 } else {
-                    write!(
-                        self.writer,
-                        "<pre><code class=\"language-{}\">",
-                        encode_safe(&lang)
-                    )?;
+                    let lang = encode_safe(&lang);
+                    write!(self.writer, "<pre><code class=\"language-{lang}\">")?;
                 }
             }
             Event::End(TagEnd::CodeBlock) => self.write_str("</code></pre>")?,
@@ -245,31 +249,21 @@ where
                 id: _,
             }) => match link_type {
                 pulldown_cmark::LinkType::Email => {
+                    let href = encode_safe(&dest_url);
                     if title.is_empty() {
-                        write!(
-                            self.writer,
-                            "<a href=\"mailto:{}\">",
-                            encode_safe(&dest_url)
-                        )?;
+                        write!(self.writer, "<a href=\"mailto:{href}\">")?;
                     } else {
-                        write!(
-                            self.writer,
-                            "<a href=\"mailto:{}\" title=\"{}\">",
-                            encode_safe(&dest_url),
-                            encode_safe(&title)
-                        )?;
+                        let title = encode_safe(&title);
+                        write!(self.writer, "<a href=\"mailto:{href}\" title=\"{title}\">")?;
                     }
                 }
                 _ => {
+                    let href = encode_safe(&dest_url);
                     if title.is_empty() {
-                        write!(self.writer, "<a href=\"{}\">", encode_safe(&dest_url))?;
+                        write!(self.writer, "<a href=\"{href}\">")?;
                     } else {
-                        write!(
-                            self.writer,
-                            "<a href=\"{}\" title=\"{}\">",
-                            encode_safe(&dest_url),
-                            encode_safe(&title)
-                        )?;
+                        let title = encode_safe(&title);
+                        write!(self.writer, "<a href=\"{href}\" title=\"{title}\">")?;
                     }
                 }
             },
@@ -285,7 +279,11 @@ where
                 let src = encode_safe(&dest_url);
                 let caption = match title.is_empty() {
                     true => self.raw_text()?,
-                    false => format!("{} ({})", self.raw_text()?, encode_safe(&title)),
+                    false => {
+                        let caption_text = self.raw_text()?;
+                        let title = encode_safe(&title);
+                        format!("{caption_text} ({title})")
+                    }
                 };
                 write!(
                     self.writer,
@@ -299,10 +297,10 @@ where
                 let len = self.numbers.len() + 1;
                 let number = *self.numbers.entry(name.clone()).or_insert(len);
                 self.in_footnote = true;
+                let name = encode_safe(&name);
                 write!(
                     self.writer,
-                    "<p class=\"footnote-definition\" id=\"{}\">",
-                    encode_safe(&name),
+                    "<p class=\"footnote-definition\" id=\"{name}\">"
                 )?;
                 write!(
                     self.writer,
@@ -329,20 +327,21 @@ where
                 }
             }
             Event::Code(text) => {
-                write!(self.writer, "<code>{}</code>", encode_safe(&text))?;
+                let text = encode_safe(&text);
+                write!(self.writer, "<code>{text}</code>")?;
             }
             Event::InlineMath(text) => {
+                let text = encode_safe(&text);
                 write!(
                     self.writer,
-                    "<span class=\"math math-inline\">{}</span>",
-                    encode_safe(&text)
+                    "<span class=\"math math-inline\">{text}</span>"
                 )?;
             }
             Event::DisplayMath(text) => {
+                let text = encode_safe(&text);
                 write!(
                     self.writer,
-                    "<span class=\"math math-display\">{}</span>",
-                    encode_safe(&text)
+                    "<span class=\"math math-display\">{text}</span>"
                 )?;
             }
             Event::Html(html) | Event::InlineHtml(html) => {
@@ -352,10 +351,10 @@ where
             Event::HardBreak => self.write_str("<br />")?,
             Event::Rule => self.write_str("<hr />")?,
             Event::FootnoteReference(name) => {
+                let href = encode_safe(&name);
                 write!(
                     self.writer,
-                    "<sup class=\"footnote-reference\"><a href=\"#{}\">",
-                    encode_safe(&name)
+                    "<sup class=\"footnote-reference\"><a href=\"#{href}\">"
                 )?;
                 let len = self.numbers.len() + 1;
                 let number = *self.numbers.entry(name).or_insert(len);

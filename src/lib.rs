@@ -39,7 +39,8 @@ pub mod crypto {
     impl std::fmt::Display for Mac {
         /// format as hex string
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "{}", hex::encode(self.0))
+            let hex = hex::encode(self.0);
+            write!(f, "{hex}")
         }
     }
 
