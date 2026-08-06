@@ -27,6 +27,6 @@
 {% block footer_actions %}
 {{ nav::confirm_link(
   label="Delete This Entry", confirm_label="Confirm Delete?",
-  url=base_path ~ "/" ~ category ~ "/" ~ entry ~ "/delete"
+  url=base_path ~ "/" ~ entry_id ~ "/delete"
 ) }}
 {% endblock footer_actions %}

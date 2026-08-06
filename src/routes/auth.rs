@@ -1,7 +1,7 @@
 use axum::response::{Html, IntoResponse, Redirect};
 use axum::{Json, extract::Query, extract::State, http::HeaderMap, http::StatusCode};
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
-use book::model::{AppState, PageContext, Passkey, Session, Slug, USERS, User, UserKey};
+use book::model::{AppState, PageContext, Passkey, Session, Slug, USERS, User, UserName};
 use book::{CONFIG, crypto::Signed, error::AppError};
 use redb::{ReadableDatabase, ReadableTable};
 use serde::Deserialize;
@@ -24,7 +24,7 @@ pub async fn auth_page(
     let page = PageContext::new()
         .insert("page_title", "Authorization")
         .insert("passkey", &code)
-        .insert("passkey_valid", &valid.to_string());
+        .insert("user", &None::<Slug<UserName>>);
     Ok(Html(page.render("auth.html")?))
 }
 
@@ -49,8 +49,8 @@ pub async fn sign_in_post(
     let _passkey = Signed::<Passkey>::parse(&body.passkey, &CONFIG.secret)
         .ok_or_else(|| AppError::json(StatusCode::UNAUTHORIZED, "Invalid or expired passkey"))?;
 
-    let username =
-        Slug::new(body.username).map_err(|e| AppError::json(StatusCode::BAD_REQUEST, e))?;
+    let username = Slug::<UserName>::new(body.username)
+        .ok_or_else(|| AppError::json(StatusCode::BAD_REQUEST, "invalid username"))?;
 
     let tx = state.db.begin_read()?;
     let table = tx.open_table(USERS)?;
@@ -92,8 +92,8 @@ pub async fn sign_up_post(
     let passkey = Signed::<Passkey>::parse(&body.passkey, &CONFIG.secret)
         .ok_or_else(|| AppError::json(StatusCode::UNAUTHORIZED, "Invalid or expired passkey"))?;
 
-    let username =
-        Slug::new(body.username).map_err(|e| AppError::json(StatusCode::BAD_REQUEST, e))?;
+    let username = Slug::<UserName>::new(body.username)
+        .ok_or_else(|| AppError::json(StatusCode::BAD_REQUEST, "invalid username"))?;
 
     let tx = state.db.begin_write()?;
     let mut table = tx.open_table(USERS)?;
@@ -124,7 +124,7 @@ pub async fn sign_out(jar: CookieJar, headers: HeaderMap) -> impl IntoResponse {
     let dest = headers
         .get("Referer")
         .and_then(|value| value.to_str().ok())
-        .unwrap_or("/");
+        .unwrap_or(CONFIG.base_path());
     (jar, Redirect::to(dest))
 }
 
@@ -133,7 +133,7 @@ pub async fn sign_out(jar: CookieJar, headers: HeaderMap) -> impl IntoResponse {
 // ++++++++++++============++++++++++++============++++++++++++============
 
 /// set session cookie on the jar
-fn set_session_cookie(jar: CookieJar, username: Slug<UserKey>, secret: &str) -> CookieJar {
+fn set_session_cookie(jar: CookieJar, username: Slug<UserName>, secret: &str) -> CookieJar {
     let token = Signed::new(Session::new(username)).generate(secret);
     let cookie = Cookie::build(("session", token))
         .path("/")

@@ -38,3 +38,9 @@
     x-text="label"
   >{{ label }}</a></li>
 {% endmacro confirm_link %}
+
+{% macro back_link() %}
+<p class="block">
+  <a href="{{ base_path }}/" class="text-muted">&larr; Back to Home</a>
+</p>
+{% endmacro back_link %}

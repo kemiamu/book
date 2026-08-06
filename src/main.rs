@@ -16,8 +16,9 @@ async fn main() {
     let listener = TcpListener::bind(&CONFIG.server_addr).await.unwrap();
 
     let app = Router::new()
-        // home
+        // home / category
         .route("/", get(routes::home_page))
+        .route("/category", get(routes::category_page))
         // account
         .route("/auth", get(routes::auth_page))
         .route("/auth/sign-in", post(routes::sign_in_post))
@@ -30,24 +31,12 @@ async fn main() {
         .route("/upload", get(routes::file_upload_page))
         .route("/upload", post(routes::file_upload_post))
         // view / download / delete
-        .route("/{category}/README.md", get(routes::category_page))
-        .route("/{category}/{entry}/README.md", get(routes::entry_page))
-        .route("/{category}/{entry}/{file}", get(routes::file_download))
-        .route(
-            "/{category}/{entry}/{file}/info",
-            get(routes::file_info_page),
-        )
-        .route(
-            "/{category}/{entry}/{file}/delete",
-            post(routes::file_delete),
-        )
-        .route("/{category}/{entry}/delete", post(routes::entry_delete))
-        // static files
-        .route("/robots.txt", get(routes::robots_txt))
-        .nest_service("/img", ServeDir::new("public/img"))
-        .nest_service("/css", ServeDir::new("public/css"))
-        .nest_service("/js", ServeDir::new("public/js"))
-        .nest_service("/fonts", ServeDir::new("public/fonts"))
+        .route("/{entry_id}/README.md", get(routes::entry_page))
+        .route("/{entry_id}/delete", post(routes::entry_delete))
+        .route("/{entry_id}/file/{file}", get(routes::file_download))
+        .route("/{entry_id}/info/{file}", get(routes::file_info_page))
+        .route("/{entry_id}/delete/{file}", post(routes::file_delete))
+        // everything else falls through to static files
         .fallback_service(ServeDir::new(&CONFIG.site_root));
 
     let app = app

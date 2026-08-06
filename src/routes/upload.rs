@@ -1,43 +1,47 @@
-use super::{BreadcrumbItem, HeaderAction, path_slug};
+use super::{
+    BreadcrumbItem, HeaderAction, format_date, parse_entry_id, parse_file_slug, session_user,
+};
 use axum::extract::multipart::Field;
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::{Json, extract::Multipart, extract::Path, extract::Query, extract::State};
 use axum_extra::extract::cookie::CookieJar;
-use book::model::{AppState, CategoryKey, EntryKey, FILE_BLOB, FILES};
-use book::model::{FileKey, FileMeta, PageContext, Session, UserToken};
-use book::{CONFIG, crypto::Signed, error::AppError};
-use redb::ReadableDatabase;
+use book::model::{AppState, ENTRIES, FILE_BLOB, FILES, FileMeta, PageContext, UserToken};
+use book::{CONFIG, error::AppError};
+use redb::{ReadableDatabase, ReadableTable};
 use serde::Deserialize;
 use std::sync::Arc;
-use time::{OffsetDateTime, format_description::well_known::Iso8601};
 
 #[derive(Deserialize)]
 pub struct UploadQuery {
-    pub category: Option<String>,
-    pub entry: Option<String>,
+    pub entry_id: Option<String>,
 }
 
 /// show file upload page
 pub async fn file_upload_page(
-    _token: UserToken,
     jar: CookieJar,
+    _token: UserToken,
+    State(state): State<Arc<AppState>>,
     Query(params): Query<UploadQuery>,
 ) -> Result<Response, AppError> {
     // uploads are always bound to an entry, so a bare /upload has no target
-    let (Some(category), Some(entry)) = (params.category, params.entry) else {
-        return Ok(Redirect::to("/").into_response());
+    let Some(raw) = params.entry_id else {
+        return Ok(Redirect::to(CONFIG.base_path()).into_response());
     };
+    let entry_id = parse_entry_id(&raw)?;
+    let tx = state.db.begin_read()?;
+    let meta = tx
+        .open_table(ENTRIES)?
+        .get(&entry_id)?
+        .ok_or_else(|| AppError::new(StatusCode::NOT_FOUND, format!("entry not found: {raw}")))?
+        .value();
 
-    let user = jar
-        .get("session")
-        .and_then(|cookie| Signed::<Session>::parse(cookie.value(), &CONFIG.secret))
-        .map(|session| session.inner.user);
     let page = PageContext::new()
         .insert("page_title", "Upload File")
-        .insert("user", &user)
-        .insert("default_category", &category)
-        .insert("default_entry", &entry);
+        .insert("user", &session_user(&jar))
+        .insert("entry_id", &entry_id)
+        .insert("category", &meta.category)
+        .insert("entry_title", &meta.title);
     Ok(Html(page.render("upload.html")?).into_response())
 }
 
@@ -58,25 +62,18 @@ pub async fn file_upload_post(
         read_field(field, &mut form).await?;
     }
     let UploadForm {
-        category_slug,
-        entry_slug,
-        file_slug,
+        entry_id: raw_entry_id,
+        file_slug: raw_file_slug,
         file_data,
     } = form;
 
-    if category_slug.is_empty() {
+    if raw_entry_id.is_empty() {
         return Err(AppError::new(
             StatusCode::BAD_REQUEST,
-            "Category slug must not be empty",
+            "Entry id must not be empty",
         ));
     }
-    if entry_slug.is_empty() {
-        return Err(AppError::new(
-            StatusCode::BAD_REQUEST,
-            "Entry slug must not be empty",
-        ));
-    }
-    if file_slug.is_empty() {
+    if raw_file_slug.is_empty() {
         return Err(AppError::new(
             StatusCode::BAD_REQUEST,
             "File slug must not be empty",
@@ -86,25 +83,28 @@ pub async fn file_upload_post(
         return Err(AppError::new(StatusCode::BAD_REQUEST, "No file uploaded"));
     };
 
-    let category_slug = path_slug::<CategoryKey>(&category_slug)?;
-    let entry_slug = path_slug::<EntryKey>(&entry_slug)?;
-    let file_slug = path_slug::<FileKey>(&file_slug)?;
+    let entry_id = parse_entry_id(&raw_entry_id)?;
+    let file_name = parse_file_slug(&raw_file_slug)?;
+    let key = (entry_id, file_name);
 
     let tx = state.db.begin_write()?;
+    let entries_table = tx.open_table(ENTRIES)?;
+    if entries_table.get(&key.0)?.is_none() {
+        return Err(AppError::new(
+            StatusCode::NOT_FOUND,
+            format!("entry not found: {raw_entry_id}"),
+        ));
+    }
+    drop(entries_table);
 
-    let mut files_table = tx.open_table(FILES)?;
-    let key = (category_slug, entry_slug, file_slug);
     let meta = FileMeta::new(username);
-    files_table.insert(&key, meta)?;
-    drop(files_table);
-
-    let mut blobs_table = tx.open_table(FILE_BLOB)?;
-    blobs_table.insert(&key, data)?;
-    drop(blobs_table);
-
+    tx.open_table(FILES)?.insert(&key, meta)?;
+    tx.open_table(FILE_BLOB)?.insert(&key, data.as_slice())?;
     tx.commit()?;
 
-    Ok((StatusCode::CREATED, Json(serde_json::json!({}))))
+    let base = CONFIG.base_path();
+    let redirect = serde_json::json!({"redirect": format!("{base}/{}/README.md", key.0)});
+    Ok((StatusCode::CREATED, Json(redirect)))
 }
 
 // file info / delete
@@ -115,60 +115,56 @@ pub async fn file_upload_post(
 pub async fn file_info_page(
     jar: CookieJar,
     State(state): State<Arc<AppState>>,
-    Path((category, entry, file)): Path<(String, String, String)>,
+    Path((raw_entry_id, raw_file)): Path<(String, String)>,
 ) -> Result<Html<String>, AppError> {
-    let category = path_slug::<CategoryKey>(&category)?;
-    let entry = path_slug::<EntryKey>(&entry)?;
-    let file = path_slug::<FileKey>(&file)?;
-    let key = (category, entry, file);
-    let (category, entry, file) = &key;
+    let entry_id = parse_entry_id(&raw_entry_id)?;
+    let file = parse_file_slug(&raw_file)?;
+    let key = (entry_id, file.clone());
     let tx = state.db.begin_read()?;
 
     let files_table = tx.open_table(FILES)?;
     let Some(meta) = files_table.get(&key)? else {
         return Err(AppError::new(
             StatusCode::NOT_FOUND,
-            format!("file not found: {category}/{entry}/{file}"),
+            format!("file not found: {raw_entry_id}/{raw_file}"),
         ));
     };
     let file_meta = meta.value();
 
-    let blobs_table = tx.open_table(FILE_BLOB)?;
-    let size = blobs_table
+    let entry_meta = tx
+        .open_table(ENTRIES)?
+        .get(&key.0)?
+        .ok_or_else(|| {
+            AppError::new(
+                StatusCode::NOT_FOUND,
+                format!("entry not found: {raw_entry_id}"),
+            )
+        })?
+        .value();
+
+    let size = tx
+        .open_table(FILE_BLOB)?
         .get(&key)?
         .map(|blob| blob.value().len())
         .unwrap_or(0);
-
-    let date = OffsetDateTime::from_unix_timestamp(file_meta.last_modified)
-        .ok()
-        .and_then(|date| date.format(&Iso8601::DATE).ok())
-        .unwrap_or_default();
-
-    let user = jar
-        .get("session")
-        .and_then(|cookie| Signed::<Session>::parse(cookie.value(), &CONFIG.secret))
-        .map(|session| session.inner.user);
+    let date = format_date(file_meta.last_modified);
+    let user = session_user(&jar);
 
     let base = CONFIG.base_path();
     let breadcrumbs = [
         BreadcrumbItem {
-            href: Some(format!("{base}/{category}/README.md")),
-            label: key.0.to_string(),
-        },
-        BreadcrumbItem {
-            href: Some(format!("{base}/{category}/{entry}/README.md")),
-            label: key.1.to_string(),
+            href: Some(format!("{base}/{raw_entry_id}/README.md")),
+            label: entry_meta.title.clone(),
         },
         BreadcrumbItem {
             href: None,
-            label: key.2.to_string(),
+            label: file.to_string(),
         },
     ];
     let page = PageContext::new()
-        .insert("page_title", &key.2)
-        .insert("category", &key.0)
-        .insert("entry", &key.1)
-        .insert("file", &key.2)
+        .insert("page_title", &file)
+        .insert("entry_id", &raw_entry_id)
+        .insert("file", &file)
         .insert("breadcrumbs", &breadcrumbs)
         .insert("page_actions", &Vec::<HeaderAction>::new())
         .insert("file_editor", &file_meta.editor)
@@ -182,28 +178,20 @@ pub async fn file_info_page(
 pub async fn file_delete(
     UserToken(token): UserToken,
     State(state): State<Arc<AppState>>,
-    Path((category, entry, file)): Path<(String, String, String)>,
+    Path((raw_entry_id, raw_file)): Path<(String, String)>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let _username = token?;
-    let category = path_slug::<CategoryKey>(&category)?;
-    let entry = path_slug::<EntryKey>(&entry)?;
-    let file = path_slug::<FileKey>(&file)?;
-    let key = (category, entry, file);
-    let (category, entry, _) = &key;
+    let entry_id = parse_entry_id(&raw_entry_id)?;
+    let file_name = parse_file_slug(&raw_file)?;
+    let key = (entry_id, file_name);
     let tx = state.db.begin_write()?;
 
-    let mut files_table = tx.open_table(FILES)?;
-    files_table.remove(&key)?;
-    drop(files_table);
-
-    let mut blobs_table = tx.open_table(FILE_BLOB)?;
-    blobs_table.remove(&key)?;
-    drop(blobs_table);
-
+    tx.open_table(FILES)?.remove(&key)?;
+    tx.open_table(FILE_BLOB)?.remove(&key)?;
     tx.commit()?;
 
     let base = CONFIG.base_path();
-    let redirect = serde_json::json!({"redirect": format!("{base}/{category}/{entry}/README.md")});
+    let redirect = serde_json::json!({"redirect": format!("{base}/{raw_entry_id}/README.md")});
     Ok(Json(redirect))
 }
 
@@ -214,8 +202,7 @@ pub async fn file_delete(
 /// multipart upload form being accumulated field by field
 #[derive(Default)]
 struct UploadForm {
-    category_slug: String,
-    entry_slug: String,
+    entry_id: String,
     file_slug: String,
     file_data: Option<Vec<u8>>,
 }
@@ -225,8 +212,7 @@ async fn read_field(field: Field<'_>, form: &mut UploadForm) -> Result<(), AppEr
     const ONLY_ONE_FILE: &str = "only one file allowed";
     let name = field.name().unwrap_or("").to_string();
     match name.as_str() {
-        "category_slug" => form.category_slug = read_text(field, "category slug").await?,
-        "entry_slug" => form.entry_slug = read_text(field, "entry slug").await?,
+        "entry_id" => form.entry_id = read_text(field, "entry id").await?,
         "file_slug" => form.file_slug = read_text(field, "file slug").await?,
         "file" if form.file_data.is_none() => form.file_data = Some(read_file(field).await?),
         "file" => Err(AppError::new(StatusCode::BAD_REQUEST, ONLY_ONE_FILE))?,

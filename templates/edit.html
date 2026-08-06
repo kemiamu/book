@@ -7,24 +7,19 @@
 const BASE = "{{ base_path }}";
 function editApp() {
   return {
-    categorySlug: "",
-    entrySlug: "",
+    entryId: "",
+    category: "",
     title: "",
     body: "",
     error: "",
     loading: false,
-    preview: false,
     init() {
       const el = this.$el;
-      this.categorySlug = el.dataset.category || "";
-      this.entrySlug = el.dataset.entry || "";
+      this.entryId = el.dataset.entryId || "";
+      this.category = el.dataset.category || "";
       this.title = el.dataset.title || "";
       this.body = el.dataset.body || "";
       this.error = el.dataset.error || "";
-      this.isNew = !el.dataset.category && !el.dataset.entry;
-    },
-    togglePreview() {
-      this.preview = !this.preview;
     },
     async submit() {
       this.error = "";
@@ -34,24 +29,15 @@ function editApp() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            category: this.categorySlug,
-            entry: this.entrySlug,
+            entry_id: this.entryId || null,
+            category: this.category,
             title: this.title,
             body: this.body,
           }),
         });
-        if (r.ok) {
-          const dest = this.isNew
-            ? BASE + "/edit?category=" + encodeURIComponent(this.categorySlug)
-                + "&entry=" + encodeURIComponent(this.entrySlug)
-            : BASE + "/" + encodeURIComponent(this.categorySlug) + "/"
-                + encodeURIComponent(this.entrySlug) + "/README.md";
-          window.location.href = dest;
-        } else {
-          const t = await r.text();
-          const m = t.match(/<p class="subtitle">([^<]+)<\/p>/);
-          this.error = m ? m[1] : r.statusText;
-        }
+        const d = await r.json();
+        if (r.ok) window.location.href = d.redirect;
+        else this.error = d.error || r.statusText;
       } catch (e) {
         this.error = "An error occurred";
       } finally {
@@ -65,44 +51,20 @@ function editApp() {
 {% block content %}
 <section class="section">
   <div class="container container-narrow">
-    <h1 class="title">{% if entry | length > 0 %}Edit Entry{% else %}New Entry{% endif %}</h1>
+    <h1 class="title">{% if entry_id | length > 0 %}Edit Entry{% else %}New Entry{% endif %}</h1>
     <form
       x-data="editApp()"
       x-on:submit.prevent="submit"
+      data-entry-id="{{ entry_id }}"
       data-category="{{ category }}"
-      data-entry="{{ entry }}"
       data-title="{{ title }}"
       data-body="{{ body }}"
       data-error="{{ error }}"
     >
-      {% if entry | length == 0 %}
-      <div class="field">
-        <label class="label" for="category">Category</label>
-        <div class="control">
-          <input
-            class="input"
-            type="text"
-            id="category"
-            x-model="categorySlug"
-            required
-            placeholder="my-category"
-          />
-        </div>
-      </div>
-      <div class="field">
-        <label class="label" for="entry">Entry (URL name)</label>
-        <div class="control">
-          <input
-            class="input"
-            type="text"
-            id="entry"
-            x-model="entrySlug"
-            required
-            placeholder="my-entry-slug"
-          />
-        </div>
-      </div>
-      {% else %}
+      {{ form::input(
+        label="Category", id="category", model="category",
+        required=true, placeholder="e.g. Notes"
+      ) }}
       {{ form::input(
         label="Title", id="title", model="title",
         required=true, placeholder="Page title"
@@ -111,13 +73,12 @@ function editApp() {
         label="Body (Markdown)", id="body", model="body",
         placeholder="Write content in Markdown..."
       ) }}
-      {% endif %}
-      {% if entry | length > 0 %}
-        {% set cancel_url = base_path ~ "/" ~ category ~ "/" ~ entry ~ "/README.md" %}
+      {% if entry_id | length > 0 %}
+        {% set cancel_url = base_path ~ "/" ~ entry_id ~ "/README.md" %}
       {% else %}
         {% set cancel_url = base_path ~ "/" %}
       {% endif %}
-      {% if entry | length > 0 %}
+      {% if entry_id | length > 0 %}
       {{ form::button_group(submit_text="Save", loading_text="Saving...", cancel_url=cancel_url) }}
       {% else %}
       {{ form::button_group(

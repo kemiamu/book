@@ -1,9 +1,10 @@
-use super::path_slug;
+use super::{parse_category, parse_entry_id, session_user};
 use axum::{Json, extract::Query, extract::State, http::StatusCode, response::Html};
 use axum_extra::extract::cookie::CookieJar;
-use book::model::{AppState, CategoryKey, ENTRIES, ENTRY_BODY, EntryBody, EntryKey, EntryMeta};
-use book::model::{Markdown, PageContext, Session, UserToken};
-use book::{CONFIG, crypto::Signed, error::AppError};
+use book::model::{
+    AppState, ENTRIES, ENTRY_BODY, EntryMeta, Markdown, PageContext, UserToken, next_entry_id,
+};
+use book::{CONFIG, error::AppError};
 use redb::{ReadableDatabase, ReadableTable};
 use serde::Deserialize;
 use std::sync::Arc;
@@ -11,8 +12,7 @@ use std::sync::Arc;
 #[derive(Deserialize)]
 /// edit entry query params
 pub struct EditQuery {
-    pub category: Option<String>,
-    pub entry: Option<String>,
+    pub entry_id: Option<String>,
 }
 
 /// show edit entry page
@@ -22,103 +22,95 @@ pub async fn edit_page(
     State(state): State<Arc<AppState>>,
     Query(params): Query<EditQuery>,
 ) -> Result<Html<String>, AppError> {
-    let (category, entry, title, body) =
-        if let (Some(category), Some(entry)) = (&params.category, &params.entry) {
-            let category = path_slug::<CategoryKey>(category)?;
-            let entry = path_slug::<EntryKey>(entry)?;
-            let key = (category, entry);
-            let (category, entry) = &key;
-            let tx = state.db.begin_read()?;
+    let (entry_id, category, title, body) = if let Some(raw) = &params.entry_id {
+        let entry_id = parse_entry_id(raw)?;
+        let tx = state.db.begin_read()?;
 
-            let entries_table = tx.open_table(ENTRIES)?;
-            let meta = entries_table.get(&key)?.ok_or_else(|| {
+        let meta = tx
+            .open_table(ENTRIES)?
+            .get(&entry_id)?
+            .ok_or_else(|| AppError::new(StatusCode::NOT_FOUND, format!("entry not found: {raw}")))?
+            .value();
+        let body = tx
+            .open_table(ENTRY_BODY)?
+            .get(&entry_id)?
+            .ok_or_else(|| {
                 AppError::new(
                     StatusCode::NOT_FOUND,
-                    format!("entry not found: {category}/{entry}"),
+                    format!("entry body not found: {raw}"),
                 )
-            })?;
-            let title = meta.value().title;
+            })?
+            .value()
+            .raw()
+            .to_string();
 
-            let bodies_table = tx.open_table(ENTRY_BODY)?;
-            let body = bodies_table.get(&key)?.ok_or_else(|| {
-                AppError::new(
-                    StatusCode::NOT_FOUND,
-                    format!("entry body not found: {category}/{entry}"),
-                )
-            })?;
+        (raw.clone(), meta.category, meta.title, body)
+    } else {
+        (String::new(), String::new(), String::new(), String::new())
+    };
 
-            (
-                key.0.to_string(),
-                key.1.to_string(),
-                title,
-                body.value().raw.into_inner(),
-            )
-        } else {
-            (String::new(), String::new(), String::new(), String::new())
-        };
-
-    let user = jar
-        .get("session")
-        .and_then(|cookie| Signed::<Session>::parse(cookie.value(), &CONFIG.secret))
-        .map(|session| session.inner.user);
     let page = PageContext::new()
         .insert("page_title", "Edit")
+        .insert("entry_id", &entry_id)
         .insert("category", &category)
-        .insert("entry", &entry)
         .insert("title", &title)
         .insert("body", &body)
         .insert("error", "")
-        .insert("user", &user);
+        .insert("user", &session_user(&jar));
     Ok(Html(page.render("edit.html")?))
 }
 
 #[derive(Deserialize)]
 /// edit form payload
 pub struct EditForm {
+    pub entry_id: Option<String>,
     pub category: String,
-    pub entry: String,
     pub title: String,
     pub body: String,
 }
 
-/// handle page save
+/// handle page save, creating a new entry or updating an existing one
 pub async fn edit_post(
     UserToken(token): UserToken,
     State(state): State<Arc<AppState>>,
     Json(body): Json<EditForm>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let tx = state.db.begin_write()?;
-
     let username = token?;
+    let category = parse_category(&body.category)?;
+    if body.title.trim().is_empty() {
+        return Err(AppError::json(
+            StatusCode::BAD_REQUEST,
+            "title must not be empty",
+        ));
+    }
 
-    let category = path_slug::<CategoryKey>(&body.category)?;
-    let entry = path_slug::<EntryKey>(&body.entry)?;
-    let key = (category, entry);
-
-    // a fresh entry can be created with just an entry slug; fall back to it
-    // as the title until a real one is provided
-    let title = if body.title.is_empty() {
-        key.1.as_ref()
-    } else {
-        body.title.as_str()
+    let mut tx = state.db.begin_write()?;
+    let entry_id = match body.entry_id {
+        Some(raw) => {
+            let entry_id = parse_entry_id(&raw)?;
+            let meta = tx
+                .open_table(ENTRIES)?
+                .get(&entry_id)?
+                .ok_or_else(|| AppError::json(StatusCode::NOT_FOUND, "entry not found"))?
+                .value()
+                .update(body.title.as_str(), category.as_str(), username);
+            tx.open_table(ENTRIES)?.insert(&entry_id, meta)?;
+            entry_id
+        }
+        None => {
+            let entry_id = next_entry_id(&mut tx)?;
+            let meta = EntryMeta::new(body.title.as_str(), category.as_str(), username);
+            tx.open_table(ENTRIES)?.insert(&entry_id, meta)?;
+            entry_id
+        }
     };
-
-    let mut entries_table = tx.open_table(ENTRIES)?;
-    let meta = match entries_table.get(&key)? {
-        // keep the creation time when saving an existing entry
-        Some(existing) => existing.value().update(title, username),
-        None => EntryMeta::new(title, username),
-    };
-    entries_table.insert(&key, meta)?;
-    drop(entries_table);
 
     let md = Markdown::new(body.body);
-
-    let mut body_table = tx.open_table(ENTRY_BODY)?;
-    body_table.insert(&key, EntryBody::new(md))?;
-    drop(body_table);
-
+    tx.open_table(ENTRY_BODY)?.insert(&entry_id, md)?;
     tx.commit()?;
 
-    Ok(Json(serde_json::json!({})))
+    let base = CONFIG.base_path();
+    Ok(Json(
+        serde_json::json!({"redirect": format!("{base}/{entry_id}/README.md")}),
+    ))
 }

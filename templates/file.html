@@ -14,9 +14,9 @@
     <div class="btn-group">
       <a
         class="btn btn-primary"
-        href="{{ base_path }}/{{ category }}/{{ entry }}/{{ file }}"
+        href="{{ base_path }}/{{ entry_id }}/file/{{ file }}"
       >Download</a>
-      <a class="btn" href="{{ base_path }}/{{ category }}/{{ entry }}/README.md">Back to Entry</a>
+      <a class="btn" href="{{ base_path }}/{{ entry_id }}/README.md">Back to Entry</a>
     </div>
   </div>
 </section>
@@ -24,6 +24,6 @@
 {% block footer_actions %}
 {{ nav::confirm_link(
   label="Delete This File", confirm_label="Confirm Delete?",
-  url=base_path ~ "/" ~ category ~ "/" ~ entry ~ "/" ~ file ~ "/delete"
+  url=base_path ~ "/" ~ entry_id ~ "/delete/" ~ file
 ) }}
 {% endblock footer_actions %}

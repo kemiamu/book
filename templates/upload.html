@@ -7,8 +7,7 @@
 const BASE = "{{ base_path }}";
 function uploadApp() {
   return {
-    categorySlug: "",
-    entrySlug: "",
+    entryId: "",
     fileSlug: "",
     file: null,
     fileName: "",
@@ -16,9 +15,7 @@ function uploadApp() {
     loading: false,
     _fileSlugEdited: false,
     init() {
-      const el = this.$el;
-      this.categorySlug = el.dataset.category || "";
-      this.entrySlug = el.dataset.entry || "";
+      this.entryId = this.$el.dataset.entryId || "";
     },
     onFileSelect(e) {
       const f = e.target.files[0];
@@ -39,19 +36,13 @@ function uploadApp() {
       this.loading = true;
       try {
         const fd = new FormData();
-        fd.append("category_slug", this.categorySlug);
-        fd.append("entry_slug", this.entrySlug);
+        fd.append("entry_id", this.entryId);
         fd.append("file_slug", this.fileSlug);
         fd.append("file", this.file);
         const r = await fetch(BASE + "/upload", { method: "POST", body: fd });
-        if (r.ok)
-          window.location.href =
-            BASE + "/" + encodeURIComponent(this.categorySlug) + "/"
-              + encodeURIComponent(this.entrySlug) + "/README.md";
-        else {
-          const d = await r.json();
-          this.error = d.error || r.statusText;
-        }
+        const d = await r.json();
+        if (r.ok) window.location.href = d.redirect;
+        else this.error = d.error || r.statusText;
       } catch (e) {
         this.error = "An error occurred";
       } finally {
@@ -65,12 +56,15 @@ function uploadApp() {
 {% block content %}
 <section class="section">
   <div class="container container-narrow">
-    <h1 class="title">Upload File to Entry</h1>
+    <h1 class="title">Upload File</h1>
+    <p class="text-muted">
+      To entry <strong>{{ entry_title }}</strong> in
+      <strong>{{ category }}</strong>
+    </p>
     <form
       x-data="uploadApp()"
       x-on:submit.prevent="submit"
-      data-category="{{ default_category }}"
-      data-entry="{{ default_entry }}"
+      data-entry-id="{{ entry_id }}"
     >
       {{ form::input(
         label="File Slug", id="file_slug", model="fileSlug",
@@ -92,12 +86,7 @@ function uploadApp() {
           </label>
         </div>
       </div>
-      {% if default_entry %}
-        {% set cancel_url = base_path ~ "/" ~ default_category ~ "/"
-          ~ default_entry ~ "/README.md" %}
-      {% else %}
-        {% set cancel_url = base_path ~ "/" %}
-      {% endif %}
+      {% set cancel_url = base_path ~ "/" ~ entry_id ~ "/README.md" %}
       {{ form::button_group(
         submit_text="Upload", loading_text="Uploading...", cancel_url=cancel_url
       ) }}

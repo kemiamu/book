@@ -54,7 +54,7 @@ pub fn init_tables<P: AsRef<Path>>(path: P) -> Result<redb::Database, redb::Erro
 /// allocate the next entry id from the singleton counter
 pub fn next_entry_id(tx: &mut redb::WriteTransaction) -> Result<EntryId, redb::Error> {
     let mut table = tx.open_table(ENTRY_COUNTER)?;
-    let next = table.get(())?.map_or(1, |n| n.value() + 1);
+    let next = table.get(())?.map_or(0, |n| n.value() + 1);
     table.insert(&(), next)?;
     Ok(EntryId::from(next))
 }

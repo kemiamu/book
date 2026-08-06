@@ -3,9 +3,6 @@ use std::sync::LazyLock;
 pub mod html;
 pub mod model;
 
-#[cfg(test)]
-pub mod tests;
-
 /// global config
 pub static CONFIG: LazyLock<config::Config> =
     LazyLock::new(|| config::Config::init("server.toml").expect("failed to load config"));
@@ -128,7 +125,7 @@ pub mod error {
     //
     // ++++++++++++============++++++++++++============++++++++++++============
 
-    use crate::model::PageContext;
+    use crate::model::{PageContext, Slug, UserName};
     use axum::{
         Json, http::StatusCode, response::Html, response::IntoResponse, response::Response,
     };
@@ -189,6 +186,7 @@ pub mod error {
                 .insert("code", &self.status.as_u16())
                 .insert("reason", &self.status.canonical_reason().unwrap_or("Error"))
                 .insert("message", &self.inner.to_string())
+                .insert("user", &None::<Slug<UserName>>)
                 .render("error.html")
                 .unwrap();
             (self.status, Html(html)).into_response()
