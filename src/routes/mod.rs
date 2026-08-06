@@ -136,20 +136,25 @@ async fn render_entry_page(
         href: None,
         label: format!("{date} @ {editor}"),
     }];
-    let page_actions = [
-        HeaderAction {
-            href: format!("{base}/edit?entry_id={entry_id}"),
-            label: "Edit".into(),
-        },
-        HeaderAction {
-            href: format!("{base}/upload?entry_id={entry_id}"),
-            label: "Upload".into(),
-        },
-    ];
+    let user = session_user(&jar);
+    let page_actions = if user.is_some() {
+        vec![
+            HeaderAction {
+                href: format!("{base}/edit?entry_id={entry_id}"),
+                label: "Edit".into(),
+            },
+            HeaderAction {
+                href: format!("{base}/upload?entry_id={entry_id}"),
+                label: "Upload".into(),
+            },
+        ]
+    } else {
+        Vec::new()
+    };
     let page = PageContext::new()
         .insert("page_title", &meta.title)
         .insert("content", body.value().html())
-        .insert("user", &session_user(&jar))
+        .insert("user", &user)
         .insert("entry_id", entry_id)
         .insert("breadcrumbs", &breadcrumbs)
         .insert("page_actions", &page_actions)

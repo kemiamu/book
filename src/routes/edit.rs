@@ -18,10 +18,11 @@ pub struct EditQuery {
 /// show edit entry page
 pub async fn edit_page(
     jar: CookieJar,
-    _token: UserToken,
+    UserToken(token): UserToken,
     State(state): State<Arc<AppState>>,
     Query(params): Query<EditQuery>,
 ) -> Result<Html<String>, AppError> {
+    let _username = token?;
     let (entry_id, category, title, body) = if let Some(raw) = &params.entry_id {
         let entry_id = parse_entry_id(raw)?;
         let tx = state.db.begin_read()?;

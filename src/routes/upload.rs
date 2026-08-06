@@ -21,10 +21,11 @@ pub struct UploadQuery {
 /// show file upload page
 pub async fn file_upload_page(
     jar: CookieJar,
-    _token: UserToken,
+    UserToken(token): UserToken,
     State(state): State<Arc<AppState>>,
     Query(params): Query<UploadQuery>,
 ) -> Result<Response, AppError> {
+    let _username = token?;
     // uploads are always bound to an entry, so a bare /upload has no target
     let Some(raw) = params.entry_id else {
         return Ok(Redirect::to(CONFIG.base_path()).into_response());
