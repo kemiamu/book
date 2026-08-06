@@ -18,6 +18,10 @@
           <li><a href="{{ base_path }}/edit" class="text-muted">New Entry</a></li>
           <li><a href="{{ base_path }}/profile" class="text-muted">Profile</a></li>
           {{ nav::confirm_link(
+            label="Download Site Copy", href=base_path ~ "/export",
+            confirm_label="Confirm Download?"
+          ) }}
+          {{ nav::confirm_link(
             label="Sign Out", href=base_path ~ "/auth/sign-out",
             confirm_label="Confirm Sign Out?"
           ) }}

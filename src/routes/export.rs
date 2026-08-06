@@ -5,9 +5,9 @@
 use axum::body::{Body, Bytes};
 use axum::response::Response;
 use axum::{extract::State, http::StatusCode};
-use book::CONFIG;
 use book::model::{AppState, ENTRIES, ENTRY_BODY, EntryId, EntryMeta};
-use book::model::{FILE_BLOB, FILES, FileMeta, FileName, Slug};
+use book::model::{FILE_BLOB, FILES, FileMeta, FileName, Slug, UserToken};
+use book::{CONFIG, error::AppError};
 use redb::ReadableDatabase;
 use std::{collections::BTreeMap, error::Error, io, sync::Arc};
 use tokio::sync::mpsc;
@@ -15,8 +15,13 @@ use tokio_stream::wrappers::ReceiverStream;
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipWriter};
 
-/// stream the whole site into a zip archive, mirroring the site urls
-pub async fn export_zip(State(state): State<Arc<AppState>>) -> Response {
+/// stream the whole site into a zip archive, mirroring the site urls;
+/// downloads are a signed-in privilege
+pub async fn export_zip(
+    UserToken(token): UserToken,
+    State(state): State<Arc<AppState>>,
+) -> Result<Response, AppError> {
+    let _username = token?;
     let (tx, rx) = mpsc::channel::<Result<Bytes, io::Error>>(16);
     tokio::task::spawn_blocking(move || {
         if let Err(e) = write_zip(&state.db, ZipSink(tx)) {
@@ -34,7 +39,7 @@ pub async fn export_zip(State(state): State<Arc<AppState>>) -> Response {
             format!("attachment; filename=\"{filename}\""),
         )
         .body(Body::from_stream(ReceiverStream::new(rx)))
-        .unwrap()
+        .map_err(|e| AppError::new(StatusCode::INTERNAL_SERVER_ERROR, e))
 }
 
 /// write every entry and file into the zip
@@ -158,23 +163,18 @@ impl io::Write for ZipSink {
 mod tests {
     use super::*;
 
-    /// open the real database read-only; tests run in parallel, and redb
-    /// locks the file, so the open is serialized and the guard is held
-    /// until the database is dropped
-    fn open_test_db() -> (redb::ReadOnlyDatabase, std::sync::MutexGuard<'static, ()>) {
-        static DB_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-        let guard = DB_LOCK.lock().unwrap();
-        let db = redb::Database::builder()
+    /// open the real database read-only; tests run in parallel so no write lock is taken
+    fn open_test_db() -> redb::ReadOnlyDatabase {
+        redb::Database::builder()
             .open_read_only("data.redb")
-            .expect("open data.redb");
-        (db, guard)
+            .expect("open data.redb")
     }
 
     /// export the real database and read the archive back, verifying every entry
     #[test]
     fn export_roundtrip() {
         use std::io::Read;
-        let (db, _guard) = open_test_db();
+        let db = open_test_db();
         let mut buf = Vec::new();
         write_zip(&db, &mut buf).expect("write zip");
 
@@ -205,7 +205,7 @@ mod tests {
     #[test]
     fn export_stats() {
         use std::io::Read;
-        let (db, _guard) = open_test_db();
+        let db = open_test_db();
         let mut buf = Vec::new();
         write_zip(&db, &mut buf).expect("write zip");
 
