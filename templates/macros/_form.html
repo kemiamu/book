@@ -42,6 +42,8 @@
   >
     <span x-text="loading?'{{ loading_text }}':'{{ submit_text }}'">{{ submit_text }}</span>
   </button>
-  <a class="btn" href="{{ cancel_url }}">Cancel</a>
+  <a class="btn" href="{{ cancel_url }}"
+    @click.prevent="window.location.replace($el.href)"
+  >Cancel</a>
 </div>
 {% endmacro button_group %}

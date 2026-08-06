@@ -20,7 +20,7 @@
         if (this.confirm) return this.act();
         this.confirm = true;
         this.label = confirmLabel;
-        setTimeout(() => (this.confirm = false, this.label = label), 3000);
+        setTimeout(() => (this.confirm = false, this.label = label), 1000);
       },
       act() {
         if (url) return fetch(url, { method: "POST" }).then((r) => r.json())

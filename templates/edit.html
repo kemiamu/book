@@ -36,7 +36,7 @@ function editApp() {
           }),
         });
         const d = await r.json();
-        if (r.ok) window.location.href = d.redirect;
+        if (r.ok) window.location.replace(d.redirect);
         else this.error = d.error || r.statusText;
       } catch (e) {
         this.error = "An error occurred";

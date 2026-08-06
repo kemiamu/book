@@ -41,7 +41,7 @@ function uploadApp() {
         fd.append("file", this.file);
         const r = await fetch(BASE + "/upload", { method: "POST", body: fd });
         const d = await r.json();
-        if (r.ok) window.location.href = d.redirect;
+        if (r.ok) window.location.replace(d.redirect);
         else this.error = d.error || r.statusText;
       } catch (e) {
         this.error = "An error occurred";
