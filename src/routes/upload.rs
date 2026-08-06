@@ -152,16 +152,10 @@ pub async fn file_info_page(
     let user = session_user(&jar);
 
     let base = CONFIG.base_path();
-    let breadcrumbs = [
-        BreadcrumbItem {
-            href: Some(format!("{base}/{raw_entry_id}/README.md")),
-            label: entry_meta.title.clone(),
-        },
-        BreadcrumbItem {
-            href: None,
-            label: file.to_string(),
-        },
-    ];
+    let breadcrumbs = [BreadcrumbItem {
+        href: Some(format!("{base}/{raw_entry_id}/README.md")),
+        label: entry_meta.title,
+    }];
     let page = PageContext::new()
         .insert("page_title", &file)
         .insert("entry_id", &raw_entry_id)
