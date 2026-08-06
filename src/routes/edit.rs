@@ -52,8 +52,8 @@ pub async fn edit_page(
     let page = PageContext::new()
         .insert("page_title", "Edit")
         .insert("entry_id", &entry_id)
-        .insert("category", &category)
         .insert("title", &title)
+        .insert("category", &category)
         .insert("body", &body)
         .insert("error", "")
         .insert("user", &session_user(&jar));
@@ -64,8 +64,8 @@ pub async fn edit_page(
 /// edit form payload
 pub struct EditForm {
     pub entry_id: Option<String>,
-    pub category: String,
     pub title: String,
+    pub category: String,
     pub body: String,
 }
 

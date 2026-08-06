@@ -30,8 +30,8 @@ function editApp() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             entry_id: this.entryId || null,
-            category: this.category,
             title: this.title,
+            category: this.category,
             body: this.body,
           }),
         });
@@ -62,12 +62,12 @@ function editApp() {
       data-error="{{ error }}"
     >
       {{ form::input(
-        label="Category", id="category", model="category",
-        required=true, placeholder="e.g. Notes"
-      ) }}
-      {{ form::input(
         label="Title", id="title", model="title",
         required=true, placeholder="Page title"
+      ) }}
+      {{ form::input(
+        label="Category", id="category", model="category",
+        required=true, placeholder="e.g. Notes"
       ) }}
       {{ form::textarea(
         label="Body (Markdown)", id="body", model="body",
