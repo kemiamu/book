@@ -134,7 +134,7 @@ async fn render_entry_page(
     let editor = meta.editor.to_string();
     let breadcrumbs = [BreadcrumbItem {
         href: None,
-        label: format!("{date} @ {editor}"),
+        label: format!("{date} @{editor}"),
     }];
     let user = session_user(&jar);
     let page_actions = if user.is_some() {
