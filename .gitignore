@@ -1,5 +1,6 @@
-/target
-/public
+/target/
+/public/
+
 /server.toml
 
 /*.redb
