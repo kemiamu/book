@@ -35,12 +35,7 @@ pub async fn edit_page(
         let body = tx
             .open_table(ENTRY_BODY)?
             .get(&entry_id)?
-            .ok_or_else(|| {
-                AppError::new(
-                    StatusCode::NOT_FOUND,
-                    format!("entry body not found: {raw}"),
-                )
-            })?
+            .ok_or_else(|| entry_body_missing(raw))?
             .value()
             .raw()
             .to_string();
@@ -114,4 +109,12 @@ pub async fn edit_post(
     Ok(Json(
         serde_json::json!({"redirect": format!("{base}/{entry_id}/README.md")}),
     ))
+}
+
+/// error for an entry whose body row is missing
+fn entry_body_missing(raw: &str) -> AppError {
+    AppError::new(
+        StatusCode::NOT_FOUND,
+        format!("entry body not found: {raw}"),
+    )
 }

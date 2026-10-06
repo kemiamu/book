@@ -182,24 +182,29 @@ mod key {
         fn is_allowed(ch: char) -> bool;
     }
 
-    /// define a slug marker type with its validation rule
-    macro_rules! slug_key {
-        ($name:ident, $len:expr, $($ch:literal)|+) => {
-            #[derive(Debug, Clone, PartialEq, Eq)]
-            pub struct $name;
+    /// file name slug: alphanumerics plus `-`, `_` and `.`
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct FileName;
 
-            impl SlugRule for $name {
-                const MAX_LEN: usize = $len;
+    impl SlugRule for FileName {
+        const MAX_LEN: usize = 255;
 
-                fn is_allowed(ch: char) -> bool {
-                    ch.is_ascii_alphanumeric() || matches!(ch, $($ch)|+)
-                }
-            }
-        };
+        fn is_allowed(ch: char) -> bool {
+            ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_' | '.')
+        }
     }
 
-    slug_key!(FileName, 255, '-' | '_' | '.');
-    slug_key!(UserName, 32, '-' | '_');
+    /// user name slug: alphanumerics plus `-` and `_`
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct UserName;
+
+    impl SlugRule for UserName {
+        const MAX_LEN: usize = 32;
+
+        fn is_allowed(ch: char) -> bool {
+            ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_')
+        }
+    }
 }
 
 // resource types
@@ -472,22 +477,21 @@ mod auth {
                 .unwrap_or_default();
 
             let Some(cookie) = jar.get("session") else {
-                return Ok(UserToken(Err(AppError::new(
-                    StatusCode::UNAUTHORIZED,
-                    "Not signed in",
-                ))));
+                return Ok(unauthorized("Not signed in"));
             };
 
             let Some(session) = Signed::<Session>::parse(cookie.value(), &crate::CONFIG.secret)
             else {
-                return Ok(UserToken(Err(AppError::new(
-                    StatusCode::UNAUTHORIZED,
-                    "Invalid or expired session",
-                ))));
+                return Ok(unauthorized("Invalid or expired session"));
             };
 
             Ok(UserToken(Ok(session.inner.user)))
         }
+    }
+
+    /// build an unauthorized user token carrying a rejection message
+    fn unauthorized(message: &'static str) -> UserToken {
+        UserToken(Err(AppError::new(StatusCode::UNAUTHORIZED, message)))
     }
 }
 

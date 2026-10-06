@@ -176,11 +176,8 @@ pub mod error {
             tracing::error!("{:?}", self);
 
             if self.json {
-                return (
-                    self.status,
-                    Json(serde_json::json!({"error": self.inner.to_string()})),
-                )
-                    .into_response();
+                let body = Json(serde_json::json!({"error": self.inner.to_string()}));
+                return (self.status, body).into_response();
             }
 
             let html = PageContext::new()
