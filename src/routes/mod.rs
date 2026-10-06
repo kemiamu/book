@@ -198,7 +198,8 @@ async fn render_category_page(
             entries.push((key.value(), meta));
         }
     }
-    entries.sort_by(|a, b| b.1.last_modified.cmp(&a.1.last_modified));
+    // alphabetical by title
+    entries.sort_by(|a, b| a.1.title.cmp(&b.1.title));
 
     let base = CONFIG.base_path();
     let entries: Vec<ListItem> = entries

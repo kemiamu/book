@@ -3,7 +3,7 @@ use book::{CONFIG, model::AppState, model::init_tables};
 use redb::Database;
 use std::{path::Path, sync::Arc};
 use tokio::net::TcpListener;
-use tower_http::{compression::CompressionLayer, services::ServeDir};
+use tower_http::compression::CompressionLayer;
 
 mod routes;
 
@@ -38,8 +38,8 @@ async fn main() {
         .route("/{entry_id}/delete/{file}", post(routes::file_delete))
         // site export
         .route("/export", get(routes::export_zip))
-        // everything else falls through to static files
-        .fallback_service(ServeDir::new(&CONFIG.site_root));
+        // everything else is served from embedded static assets
+        .fallback(assets::static_handler);
 
     let app = app
         .layer(DefaultBodyLimit::max(100 * 1024 * 1024))
@@ -56,5 +56,34 @@ fn init_db<P: AsRef<Path>>(path: P) -> Option<Database> {
     match path.as_ref().exists() {
         true => Database::open(path).ok(),
         false => init_tables(path).ok(),
+    }
+}
+
+// static assets
+//
+// ++++++++++++============++++++++++++============++++++++++++============
+
+/// static assets, embedded at compile time
+mod assets {
+    use axum::http::{StatusCode, Uri};
+    use axum::response::{IntoResponse, Response};
+
+    const FAVICON_SVG: &[u8] = include_bytes!("../assets/favicon.svg");
+    const MODERN_NORMALIZE_CSS: &[u8] = include_bytes!("../assets/modern-normalize.css");
+    const STYLE_CSS: &[u8] = include_bytes!("../assets/style-0019.css");
+    const ALPINE_JS: &[u8] = include_bytes!("../assets/alpine.min.js");
+    const ROBOTS_TXT: &[u8] = include_bytes!("../assets/robots.txt");
+
+    /// serve embedded assets by path, 404 for anything else
+    pub async fn static_handler(uri: Uri) -> Response {
+        let (body, mime): (&'static [u8], &'static str) = match uri.path() {
+            "/img/favicon.svg" => (FAVICON_SVG, "image/svg+xml"),
+            "/css/modern-normalize.css" => (MODERN_NORMALIZE_CSS, "text/css"),
+            "/css/style-0019.css" => (STYLE_CSS, "text/css"),
+            "/js/alpine.min.js" => (ALPINE_JS, "text/javascript"),
+            "/robots.txt" => (ROBOTS_TXT, "text/plain"),
+            _ => return StatusCode::NOT_FOUND.into_response(),
+        };
+        ([("content-type", mime)], body).into_response()
     }
 }

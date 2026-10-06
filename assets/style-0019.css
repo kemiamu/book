@@ -1,0 +1,905 @@
+/* Custom stylesheet — Catppuccin palette
+ * Light theme: Catppuccin Latte  |  Dark theme: Catppuccin Mocha
+ * Theme is switched via the `data-theme` attribute on <html>.
+ */
+
+:root {
+  /* Catppuccin Latte */
+  --ctp-rosewater: #dc8a78;
+  --ctp-flamingo: #dd7878;
+  --ctp-pink: #ea76cb;
+  --ctp-mauve: #8839ef;
+  --ctp-red: #d20f39;
+  --ctp-maroon: #e64553;
+  --ctp-peach: #fe640b;
+  --ctp-yellow: #df8e1d;
+  --ctp-green: #40a02b;
+  --ctp-teal: #179299;
+  --ctp-sky: #04a5e5;
+  --ctp-sapphire: #209fb5;
+  --ctp-blue: #1e66f5;
+  --ctp-lavender: #7287fd;
+  --ctp-text: #4c4f69;
+  --ctp-subtext1: #5c5f77;
+  --ctp-subtext0: #6c6f85;
+  --ctp-overlay2: #7c7f93;
+  --ctp-overlay1: #8c8fa1;
+  --ctp-overlay0: #9ca0b0;
+  --ctp-surface2: #acb0be;
+  --ctp-surface1: #bcc0cc;
+  --ctp-surface0: #ccd0da;
+  --ctp-base: #eff1f5;
+  --ctp-mantle: #e6e9ef;
+  --ctp-crust: #dce0e8;
+  --font-sans: "Sarasa Gothic SC", "Sarasa Gothic TC", "Sarasa Gothic HK",
+    "Sarasa Gothic J", "Sarasa Gothic K", "Sarasa Gothic UI SC", "Sarasa Gothic UI TC",
+    "Sarasa Mono SC", "Sarasa Mono TC", "Noto Sans SC", "Noto Sans TC", "Noto Sans HK",
+    "Noto Sans JP", "Noto Sans KR", "Noto Sans CJK SC", "Noto Sans CJK TC", "Noto Sans CJK JP",
+    "Noto Sans CJK KR", "Noto Sans CJK", "Source Han Sans SC", "Source Han Sans TC",
+    "Source Han Sans HK", "Source Han Sans JP", "Source Han Sans KR", "Source Han Sans",
+    "PingFang SC", "PingFang TC", "PingFang HK", "Hiragino Sans GB", "Hiragino Sans TC",
+    "Hiragino Sans", "Lantinghei SC", "Lantinghei TC", "STHeiti", "STHeiti SC", "STHeiti TC",
+    "STXihei", "Microsoft YaHei", "Microsoft YaHei UI", "微软雅黑", "Microsoft JhengHei",
+    "Microsoft JhengHei UI", "微软正黑体", "SimHei", "黑体", "Hei", "DengXian", "等线",
+    "FZLanTingHeiS-R-GB", "FZLanTingHeiS-R-GBK", "FZYouHei", "FZHeiTi", "HYQiHei", "HYHei",
+    "WenQuanYi Micro Hei", "WenQuanYi Zen Hei", "Droid Sans Fallback", "Noto Sans", "Open Sans",
+    "Yu Gothic", "Yu Gothic UI", "Meiryo", "Meiryo UI", "MS Gothic", "Osaka", "Malgun Gothic",
+    "Malgun Gothic UI", "Apple Gothic", "Gulim", "Roboto", "Roboto Condensed", "Noto Sans Display",
+    "Arimo", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Segoe UI Variable",
+    "Helvetica Neue", "Helvetica", "Arial", "Tahoma", "Verdana", "Geneva", "Lucida Grande",
+    sans-serif;
+  --font-serif: Georgia, "Times New Roman", "Songti SC", "Noto Serif CJK SC",
+    "Source Han Serif SC", "Source Han Serif", "SimSun", "宋体", serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", "JetBrainsMono Nerd Font",
+    "Fira Code", "Maple Mono", "Adwaita Mono", "Source Code Pro", "IBM Plex Mono", "Roboto Mono",
+    "Ubuntu Mono", "UbuntuMono Nerd Font", "ZedMono Nerd Font Mono", "BlexMono Nerd Font",
+    "SpaceMono Nerd Font", "Fantasque Sans Mono", "DejaVu Sans Mono", "Noto Sans Mono",
+    "Noto Sans Mono CJK SC", Menlo, Monaco, Consolas, "Liberation Mono", "Nimbus Mono PS",
+    "Courier New", monospace;
+}
+
+[data-theme="dark"] {
+  /* Catppuccin Mocha */
+  --ctp-rosewater: #f5e0dc;
+  --ctp-flamingo: #f2cdcd;
+  --ctp-pink: #f5c2e7;
+  --ctp-mauve: #cba6f7;
+  --ctp-red: #f38ba8;
+  --ctp-maroon: #eba0ac;
+  --ctp-peach: #fab387;
+  --ctp-yellow: #f9e2af;
+  --ctp-green: #a6e3a1;
+  --ctp-teal: #94e2d5;
+  --ctp-sky: #89dceb;
+  --ctp-sapphire: #74c7ec;
+  --ctp-blue: #89b4fa;
+  --ctp-lavender: #b4befe;
+  --ctp-text: #cdd6f4;
+  --ctp-subtext1: #bac2de;
+  --ctp-subtext0: #a6adc8;
+  --ctp-overlay2: #9399b2;
+  --ctp-overlay1: #7f849c;
+  --ctp-overlay0: #6c7086;
+  --ctp-surface2: #585b70;
+  --ctp-surface1: #45475a;
+  --ctp-surface0: #313244;
+  --ctp-base: #1e1e2e;
+  --ctp-mantle: #181825;
+  --ctp-crust: #11111b;
+}
+
+/* Base
+ *
+ * ++++++++++++============++++++++++++============++++++++++++============ */
+
+html {
+  color-scheme: light;
+  /* native controls (checkbox, radio, range, progress, caret) */
+  accent-color: var(--ctp-blue);
+  caret-color: var(--ctp-blue);
+--ctp-crust: #11111b;
+  color-scheme: dark;
+}
+
+/* selected text */
+::selection {
+  background: color-mix(in srgb, var(--ctp-blue) 30%, transparent);
+}
+
+/* keyboard focus outline */
+:focus-visible {
+  outline: 2px solid var(--ctp-blue);
+  outline-offset: 2px;
+}
+
+/* chrome autofill background */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--ctp-base) inset;
+  -webkit-text-fill-color: var(--ctp-text);
+}
+
+body {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--ctp-base);
+  color: var(--ctp-text);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.6;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+main {
+  flex: 1 0 auto;
+}
+
+a {
+  color: var(--ctp-blue);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--ctp-lavender);
+  text-decoration: underline;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--ctp-surface1);
+  margin: 1.5rem 0;
+}
+
+/* Layout
+ *
+ * ++++++++++++============++++++++++++============++++++++++++============ */
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+
+.container-narrow {
+  max-width: 800px;
+}
+
+.section {
+  padding: 2.5rem 0;
+}
+
+.hero {
+  padding: 4rem 0 0.5rem;
+}
+
+/* auth / error centering */
+.auth-wrap,
+.error-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 28rem;
+}
+
+/* Typography
+ *
+ * ++++++++++++============++++++++++++============++++++++++++============ */
+
+.title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0 0 0.4em;
+  color: var(--ctp-text);
+}
+
+.hero .title {
+  font-size: 2rem;
+  margin-bottom: 0.25em;
+}
+
+.title-xl {
+  font-size: 3rem;
+  margin-bottom: 0.2em;
+}
+
+.subtitle {
+  font-size: 1.05rem;
+  font-weight: 400;
+  margin: 0 0 1em;
+  color: var(--ctp-subtext0);
+}
+
+.text-muted {
+  color: var(--ctp-subtext0);
+}
+
+.text-faint {
+  color: var(--ctp-overlay1);
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+.text-danger,
+.text-danger:hover {
+  color: var(--ctp-red);
+}
+
+.text-success {
+  color: var(--ctp-green);
+}
+
+.text-bold {
+  font-weight: 700;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.block {
+  margin-bottom: 1.5rem;
+}
+
+.mt-2 {
+  margin-top: 0.5rem;
+}
+
+.mb-4 {
+  margin-bottom: 1rem;
+}
+
+.mb-0 {
+  margin-bottom: 0;
+}
+
+.pb-2 {
+  padding-bottom: 0.5rem;
+}
+
+/* Footer
+ *
+ * ++++++++++++============++++++++++++============++++++++++++============ */
+
+.footer {
+  background: var(--ctp-mantle);
+  border-top: 1px solid var(--ctp-surface0);
+  padding: 3rem 0 1.5rem;
+  margin-top: 3rem;
+}
+
+.footer-grid {
+  display: flex;
+  gap: 2rem;
+}
+
+.footer-grid > .footer-brand {
+  flex: 7 1 0;
+}
+
+.footer-grid > .footer-links {
+  flex: 5 1 0;
+}
+
+@media (max-width: 640px) {
+  .footer-grid {
+    flex-direction: column;
+  }
+
+  .footer-grid > .footer-brand,
+  .footer-grid > .footer-links {
+    flex: none;
+  }
+}
+
+.footer .title {
+  font-size: 1.1rem;
+  margin-bottom: 0.5em;
+}
+
+.footer-links ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.footer-links li {
+  margin: 0.3em 0;
+}
+
+.footer-links a {
+  display: block;
+  padding: 0.25em 0;
+}
+
+.footer-links a:hover:not(.text-danger) {
+  color: var(--ctp-blue);
+  text-decoration: underline;
+  text-decoration-thickness: 0.1em;
+  text-underline-offset: 0.25em;
+}
+
+.footer-bottom p {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.footer-bottom a {
+  color: var(--ctp-overlay2);
+}
+
+.footer-bottom a:hover {
+  color: var(--ctp-text);
+}
+
+/* Forms
+ *
+ * ++++++++++++============++++++++++++============++++++++++++============ */
+
+.field {
+  margin-bottom: 1.25rem;
+}
+
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.label {
+  display: block;
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--ctp-subtext1);
+  margin-bottom: 0.35em;
+}
+
+.control {
+  width: 100%;
+}
+
+.input,
+.textarea {
+  display: block;
+  width: 100%;
+  padding: 0.5em 0.75em;
+  font: inherit;
+  color: var(--ctp-text);
+  background: var(--ctp-base);
+  border: 1px solid var(--ctp-surface1);
+  border-radius: 8px;
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--ctp-overlay0);
+}
+
+.input:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--ctp-blue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ctp-blue) 25%, transparent);
+}
+
+/* Buttons
+ *
+ * ++++++++++++============++++++++++++============++++++++++++============ */
+
+.btn {
+  display: inline-block;
+  padding: 0.5em 1em;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ctp-text);
+  background: transparent;
+  border: 1px solid var(--ctp-surface1);
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+}
+
+.btn:hover {
+  background: var(--ctp-surface0);
+  color: var(--ctp-text);
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: var(--ctp-blue);
+  border-color: var(--ctp-blue);
+  color: var(--ctp-crust);
+}
+
+.btn-primary:hover {
+  background: var(--ctp-lavender);
+  border-color: var(--ctp-blue);
+  color: var(--ctp-crust);
+}
+
+.btn-warning {
+  background: var(--ctp-yellow);
+  border-color: var(--ctp-yellow);
+  color: var(--ctp-crust);
+}
+
+.btn-warning:hover {
+  background: var(--ctp-peach);
+  border-color: var(--ctp-peach);
+  color: var(--ctp-crust);
+}
+
+.btn-block {
+  display: block;
+  width: 100%;
+}
+
+.btn.btn-loading {
+  color: transparent;
+  pointer-events: none;
+  position: relative;
+}
+
+.btn-loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1em;
+  height: 1em;
+  margin: -0.5em 0 0 -0.5em;
+  border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-top-color: var(--ctp-text);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.btn-loading.btn-primary::after {
+  border-top-color: var(--ctp-crust);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.btn-group,
+.page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-group-center {
+  justify-content: center;
+}
+
+/* Card
+ *
+ * ++++++++++++============++++++++++++============++++++++++++============ */
+
+.card {
+  background: var(--ctp-mantle);
+  border: 1px solid var(--ctp-surface0);
+  border-radius: 12px;
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+/* Notices (also used by markdown admonitions)
+ *
+ * ++++++++++++============++++++++++++============++++++++++++============ */
+
+.notice {
+  padding: 0.9em 1.25em;
+  margin-bottom: 1.25rem;
+  background: var(--ctp-mantle);
+  border-left: 4px solid var(--ctp-surface1);
+}
+
+.notice p,
+.content blockquote p {
+  margin: 0 0 0.5em;
+}
+
+.notice p:last-child,
+.content blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+.notice-info {
+  border-left-color: var(--ctp-blue);
+}
+
+.notice-success {
+  border-left-color: var(--ctp-green);
+}
+
+.notice-primary {
+  border-left-color: var(--ctp-mauve);
+}
+
+.notice-warning {
+  border-left-color: var(--ctp-yellow);
+}
+
+.notice-danger {
+  border-left-color: var(--ctp-red);
+}
+
+/* flex row when a notice has a dismiss button */
+.notice:has(.notice-close) {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5em;
+}
+
+.notice-close {
+  order: 1;
+  margin-left: auto;
+  border: none;
+  background: none;
+  padding: 0 0.2em;
+  font-size: 1.15rem;
+  line-height: 1;
+  color: var(--ctp-overlay1);
+  cursor: pointer;
+}
+
+.notice-close:hover {
+  color: var(--ctp-red);
+}
+
+.notice-close::before {
+  content: "\00d7";
+}
+
+/* List
+ *
+ * ++++++++++++============++++++++++++============++++++++++++============ */
+
+.list-title {
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ctp-overlay1);
+  margin: 0 0 0.75em;
+}
+
+.list {
+  counter-reset: list;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.list-item {
+  counter-increment: list;
+}
+
+/* independent separator element between rows */
+.list-sep {
+  height: 1px;
+  margin: 0 0.9em;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--ctp-surface1) 0 4px,
+    transparent 4px 8px
+  );
+}
+
+.list-item:hover .list-link {
+  color: var(--ctp-blue);
+  /* override the global a:hover underline */
+  text-decoration: none;
+}
+
+/* underline only the title text, not the number or the whole row */
+.list-item:hover .list-item-title {
+  text-decoration: underline;
+  text-decoration-thickness: 0.1em;
+  text-underline-offset: 0.25em;
+}
+
+.list-link {
+  display: flex;
+  align-items: baseline;
+  gap: 0.9em;
+  padding: 0.7em 0.9em;
+  border-radius: 8px;
+  color: var(--ctp-text);
+  transition: color 0.15s ease;
+}
+
+.list-link::before {
+  content: counter(list);
+  flex: none;
+  min-width: 1.6em;
+  font-family: var(--font-mono);
+  font-size: 1em;
+  font-weight: 600;
+  text-align: right;
+  color: var(--ctp-lavender);
+}
+
+/* Breadcrumb
+ *
+ * ++++++++++++============++++++++++++============++++++++++++============ */
+
+.breadcrumb {
+  margin: 0 0 1.25em;
+  font-size: 1rem;
+}
+
+.breadcrumb ul {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5em;
+  margin: 0;
+  padding: 0;
+}
+
+.breadcrumb li + li::before {
+  content: "/";
+  margin-right: 0.5em;
+  color: var(--ctp-overlay1);
+}
+
+.breadcrumb-active,
+.breadcrumb-active a,
+.breadcrumb-active a:hover {
+  color: var(--ctp-subtext0);
+}
+
+.breadcrumb-active a:hover {
+  cursor: default;
+}
+
+/* Page header
+ *
+ * ++++++++++++============++++++++++++============++++++++++++============ */
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.page-header-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .page-header-actions {
+    flex-wrap: wrap;
+  }
+}
+
+/* File upload
+ *
+ * ++++++++++++============++++++++++++============++++++++++++============ */
+
+.file-upload {
+  width: 100%;
+}
+
+.file-upload-label {
+  display: flex;
+  align-items: stretch;
+  cursor: pointer;
+  border: 1px solid var(--ctp-surface1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.file-upload-label:hover {
+  border-color: var(--ctp-blue);
+}
+
+.file-upload-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.file-upload-cta {
+  padding: 0.6em 1em;
+  font-weight: 600;
+  background: var(--ctp-surface0);
+  color: var(--ctp-text);
+  white-space: nowrap;
+}
+
+.file-upload-name {
+  flex: 1;
+  padding: 0.6em 0.75em;
+  color: var(--ctp-subtext0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Tables
+ *
+ * ++++++++++++============++++++++++++============++++++++++++============ */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 1rem;
+}
+
+.table th,
+.table td {
+  border: 1px solid var(--ctp-surface1);
+  padding: 0.5em 0.75em;
+}
+
+.table th {
+  background: var(--ctp-mantle);
+  font-weight: 600;
+}
+
+/* Markdown content
+ *
+ * ++++++++++++============++++++++++++============++++++++++++============ */
+
+.content {
+  font-family: var(--font-sans);
+  line-height: 1.65;
+  word-wrap: break-word;
+}
+
+/* md h1 is banned: it would outrank the page title, so strike it */
+.content h1 {
+  font-size: 1rem;
+  text-decoration: line-through;
+}
+
+.content h2 {
+  font-size: 1.2rem;
+}
+
+.content h3 {
+  font-size: 1.1rem;
+}
+
+.content h4,
+.content h5,
+.content h6 {
+  font-size: 1rem;
+}
+
+.content h1,
+.content h2,
+.content h3,
+.content h4,
+.content h5,
+.content h6 {
+  margin: 2em 0 0.75em;
+  color: var(--ctp-text);
+}
+
+.content p {
+  margin: 0 0 1em;
+}
+
+.content ul,
+.content ol {
+  margin: 0 0 1em 1.5em;
+  padding: 0;
+}
+
+.content li {
+  margin: 0.25em 0;
+}
+
+.content img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  max-height: 30vh;
+  margin: 0 auto;
+  opacity: 0.88;
+  border-radius: 8px;
+}
+
+.content figure {
+  margin: 1.25rem 0;
+  text-align: center;
+}
+
+.content figure figcaption {
+  font-size: 1rem;
+  color: var(--ctp-subtext0);
+  margin-top: 0.35em;
+}
+
+.content blockquote {
+  margin: 0 0 1em;
+  padding: 0.75em 1.25em;
+  background: var(--ctp-mantle);
+  border-left: 4px solid var(--ctp-surface1);
+  color: var(--ctp-subtext0);
+}
+
+.content code {
+  font-family: var(--font-mono);
+  font-size: 1em;
+  background: var(--ctp-mantle);
+  border: 1px solid var(--ctp-surface0);
+  border-radius: 5px;
+  padding: 0.1em 0.35em;
+}
+
+.content pre {
+  background: var(--ctp-mantle);
+  border: 1px solid var(--ctp-surface0);
+  border-radius: 8px;
+  padding: 1em 1.25em;
+  margin: 0 0 1em;
+  overflow-x: auto;
+  line-height: 1.5;
+}
+
+.content pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 1rem;
+}
+
+.content del {
+  color: var(--ctp-overlay1);
+}
+
+.content hr {
+  margin: 2rem 0;
+}
+
+.content .footnote-definition {
+  font-size: 1rem;
+  color: var(--ctp-subtext0);
+}
+
+.content .footnote-definition-label {
+  color: var(--ctp-text);
+}
+
+/* math */
+.math-inline {
+  font-style: italic;
+}
+
+.math-display {
+  display: block;
+  text-align: center;
+  margin: 1em 0;
+  font-style: italic;
+}

@@ -97,7 +97,6 @@ pub mod config {
     /// server configuration
     pub struct Config {
         pub server_addr: String,
-        pub site_root: String,
         pub base_url: String,
         pub site_title: String,
         pub secret: String,
