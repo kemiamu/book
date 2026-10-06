@@ -65,25 +65,18 @@ fn init_db<P: AsRef<Path>>(path: P) -> Option<Database> {
 
 /// static assets, embedded at compile time
 mod assets {
-    use axum::http::{StatusCode, Uri};
+    use axum::http::{StatusCode, Uri, header::CONTENT_TYPE};
     use axum::response::{IntoResponse, Response};
 
-    const FAVICON_SVG: &[u8] = include_bytes!("../assets/favicon.svg");
-    const MODERN_NORMALIZE_CSS: &[u8] = include_bytes!("../assets/modern-normalize.css");
-    const STYLE_CSS: &[u8] = include_bytes!("../assets/style-0019.css");
-    const ALPINE_JS: &[u8] = include_bytes!("../assets/alpine.min.js");
-    const ROBOTS_TXT: &[u8] = include_bytes!("../assets/robots.txt");
+    /// every file under `assets/`, paths mirroring their url paths
+    static ASSETS: include_dir::Dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/assets");
 
-    /// serve embedded assets by path, 404 for anything else
+    /// serve embedded assets by url path, 404 for anything else
     pub async fn static_handler(uri: Uri) -> Response {
-        let (body, mime): (&'static [u8], &'static str) = match uri.path() {
-            "/img/favicon.svg" => (FAVICON_SVG, "image/svg+xml"),
-            "/css/modern-normalize.css" => (MODERN_NORMALIZE_CSS, "text/css"),
-            "/css/style-0019.css" => (STYLE_CSS, "text/css"),
-            "/js/alpine.min.js" => (ALPINE_JS, "text/javascript"),
-            "/robots.txt" => (ROBOTS_TXT, "text/plain"),
-            _ => return StatusCode::NOT_FOUND.into_response(),
+        let Some(file) = ASSETS.get_file(uri.path().trim_start_matches('/')) else {
+            return StatusCode::NOT_FOUND.into_response();
         };
-        ([("content-type", mime)], body).into_response()
+        let mime = mime_guess::from_path(file.path()).first_or_octet_stream();
+        ([(CONTENT_TYPE, mime.to_string())], file.contents()).into_response()
     }
 }

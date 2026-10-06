@@ -6,9 +6,29 @@ pub mod model;
 /// global config
 pub static CONFIG: LazyLock<config::Config> =
     LazyLock::new(|| config::Config::init("server.toml").expect("failed to load config"));
-/// global templates
+/// global templates, embedded at compile time
 pub static TEMPLATES: LazyLock<tera::Tera> =
-    LazyLock::new(|| tera::Tera::new("templates/**/*").expect("failed to load templates"));
+    LazyLock::new(|| load_templates().expect("failed to load templates"));
+
+/// templates embedded at compile time, paths mirroring their names
+static TEMPLATE_DIR: include_dir::Dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/templates");
+
+/// build the template engine from templates embedded at compile time
+fn load_templates() -> Result<tera::Tera, tera::Error> {
+    let mut dirs = vec![&TEMPLATE_DIR];
+    let mut files = Vec::new();
+    while let Some(dir) = dirs.pop() {
+        dir.dirs().for_each(|sub| dirs.push(sub));
+        files.extend(dir.files());
+    }
+    let pairs = files.iter().map(|file| {
+        let path = file.path().to_str().unwrap();
+        (path, file.contents_utf8().unwrap())
+    });
+    let mut tera = tera::Tera::default();
+    tera.add_raw_templates(pairs)?;
+    Ok(tera)
+}
 
 pub mod crypto {
     // mac
