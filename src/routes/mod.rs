@@ -39,8 +39,9 @@ pub async fn home_page(
         entries.push((key.value(), meta));
     }
 
-    // most recently updated first
+    // most recently updated first, capped for the home page
     entries.sort_by(|a, b| b.1.last_modified.cmp(&a.1.last_modified));
+    entries.truncate(12);
 
     let base = CONFIG.base_path();
     let entries: Vec<ListItem> = entries
