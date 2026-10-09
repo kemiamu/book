@@ -3,7 +3,7 @@
   <ul>
     <li><a href="{{ base_path }}/">Home</a></li>
     {% for item in items %}
-    <li {% if loop.last %}class="breadcrumb-active"{% endif %}>
+    <li{% if loop.last and not item.href %} class="breadcrumb-active"{% endif %}>
       {% if item.href %}<a href="{{ item.href }}">{{ item.label }}</a>
       {% else %}<span class="text-muted" aria-current="page">{{ item.label }}</span>
       {% endif %}

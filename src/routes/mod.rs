@@ -130,12 +130,15 @@ async fn render_entry_page(
         })
         .collect();
 
-    // the breadcrumb shows when the entry was created
+    // the breadcrumb links back to the entry's category
     let created = format_date(meta.created_at);
     let editor = meta.editor.to_string();
     let breadcrumbs = [BreadcrumbItem {
-        href: None,
-        label: format!("{created} @{editor}"),
+        href: Some(format!(
+            "{base}/category?name={}",
+            encode_query(&meta.category)
+        )),
+        label: display_category(&meta.category).to_string(),
     }];
     let user = session_user(&jar);
     let page_actions = if user.is_some() {
