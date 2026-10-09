@@ -7,9 +7,10 @@
   <div class="container">
     <div class="footer-grid">
       <div class="footer-brand">
+        {% block footer_brand %}
         <p class="title">{{ site_title }}</p>
         <p class="text-muted">A rather humble documentation site.</p>
-        {% block footer_meta %}{% endblock footer_meta %}
+        {% endblock footer_brand %}
       </div>
       <div class="footer-links">
         <p class="title">Links</p>

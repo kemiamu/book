@@ -24,9 +24,10 @@
   </div>
 </section>
 {% endblock content %}
-{% block footer_meta %}
-<p class="text-faint">Entry created {{ entry_created }} by {{ entry_editor }}</p>
-{% endblock footer_meta %}
+{% block footer_brand %}
+<p class="title">{{ page_title }}</p>
+<p class="text-muted">Entry created {{ entry_created }} by {{ entry_editor }}</p>
+{% endblock footer_brand %}
 {% block footer_actions %}
 {{ nav::confirm_link(
   label="Delete This Entry", confirm_label="Confirm Delete?",
