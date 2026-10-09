@@ -131,11 +131,11 @@ async fn render_entry_page(
         .collect();
 
     // the breadcrumb shows when the entry was created
-    let date = format_date(meta.created_at);
+    let created = format_date(meta.created_at);
     let editor = meta.editor.to_string();
     let breadcrumbs = [BreadcrumbItem {
         href: None,
-        label: format!("{date} @{editor}"),
+        label: format!("{created} @{editor}"),
     }];
     let user = session_user(&jar);
     let page_actions = if user.is_some() {
@@ -159,7 +159,9 @@ async fn render_entry_page(
         .insert("entry_id", entry_id)
         .insert("breadcrumbs", &breadcrumbs)
         .insert("page_actions", &page_actions)
-        .insert("files", &files);
+        .insert("files", &files)
+        .insert("entry_editor", &editor)
+        .insert("entry_created", &created);
     Ok(Html(page.render("entry.html")?))
 }
 
