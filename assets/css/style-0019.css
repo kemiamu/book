@@ -56,6 +56,12 @@
     "SpaceMono Nerd Font", "Fantasque Sans Mono", "DejaVu Sans Mono", "Noto Sans Mono",
     "Noto Sans Mono CJK SC", Menlo, Monaco, Consolas, "Liberation Mono", "Nimbus Mono PS",
     "Courier New", monospace;
+
+  /* type scale */
+  --text-sm: 1rem;
+  --text-md: 1.1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
 }
 
 [data-theme="dark"] {
@@ -128,7 +134,7 @@ body {
   background: var(--ctp-base);
   color: var(--ctp-text);
   font-family: var(--font-sans);
-  font-size: 1rem;
+  font-size: var(--text-sm);
   line-height: 1.6;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
@@ -193,24 +199,24 @@ hr {
  * ++++++++++++============++++++++++++============++++++++++++============ */
 
 .title {
-  font-size: 1.2rem;
+  font-size: var(--text-lg);
   font-weight: 700;
   margin: 0 0 0.4em;
   color: var(--ctp-text);
 }
 
 .hero .title {
-  font-size: 2rem;
+  font-size: var(--text-xl);
   margin-bottom: 0.25em;
 }
 
 .title-xl {
-  font-size: 3rem;
+  font-size: var(--text-xl);
   margin-bottom: 0.2em;
 }
 
 .subtitle {
-  font-size: 1.05rem;
+  font-size: var(--text-md);
   font-weight: 400;
   margin: 0 0 1em;
   color: var(--ctp-subtext0);
@@ -301,7 +307,7 @@ hr {
 }
 
 .footer .title {
-  font-size: 1.1rem;
+  font-size: var(--text-md);
   margin-bottom: 0.5em;
 }
 
@@ -328,7 +334,7 @@ hr {
 }
 
 .footer-bottom p {
-  font-size: 1rem;
+  font-size: var(--text-sm);
   margin: 0;
 }
 
@@ -357,7 +363,7 @@ hr {
 .label {
   display: block;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: var(--text-sm);
   color: var(--ctp-subtext1);
   margin-bottom: 0.35em;
 }
@@ -552,7 +558,7 @@ hr {
   border: none;
   background: none;
   padding: 0 0.2em;
-  font-size: 1.15rem;
+  font-size: var(--text-md);
   line-height: 1;
   color: var(--ctp-overlay1);
   cursor: pointer;
@@ -571,7 +577,7 @@ hr {
  * ++++++++++++============++++++++++++============++++++++++++============ */
 
 .list-title {
-  font-size: 1rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -641,7 +647,7 @@ hr {
 
 .breadcrumb {
   margin: 0 0 1.25em;
-  font-size: 1rem;
+  font-size: var(--text-sm);
 }
 
 .breadcrumb ul {
@@ -752,7 +758,7 @@ hr {
   width: 100%;
   border-collapse: collapse;
   margin: 1em 0;
-  font-size: 1rem;
+  font-size: var(--text-sm);
 }
 
 .table th,
@@ -778,22 +784,22 @@ hr {
 
 /* md h1 is banned: it would outrank the page title, so strike it */
 .content h1 {
-  font-size: 1rem;
+  font-size: var(--text-sm);
   text-decoration: line-through;
 }
 
 .content h2 {
-  font-size: 1.2rem;
+  font-size: var(--text-lg);
 }
 
 .content h3 {
-  font-size: 1.1rem;
+  font-size: var(--text-md);
 }
 
 .content h4,
 .content h5,
 .content h6 {
-  font-size: 1rem;
+  font-size: var(--text-sm);
 }
 
 .content h1,
@@ -836,7 +842,7 @@ hr {
 }
 
 .content figure figcaption {
-  font-size: 1rem;
+  font-size: var(--text-sm);
   color: var(--ctp-subtext0);
   margin-top: 0.35em;
 }
@@ -872,7 +878,7 @@ hr {
   background: none;
   border: none;
   padding: 0;
-  font-size: 1rem;
+  font-size: var(--text-sm);
 }
 
 .content del {
@@ -884,7 +890,7 @@ hr {
 }
 
 .content .footnote-definition {
-  font-size: 1rem;
+  font-size: var(--text-sm);
   color: var(--ctp-subtext0);
 }
 
